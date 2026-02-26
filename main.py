@@ -5,40 +5,48 @@ import pytesseract
 import io
 import re
 import pdfplumber
+import os
 
-# إعداد مسار المحرك للسيرفر
+# إعداد مسار المحرك لنظام Linux على Render
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
-app = FastAPI()
+app = FastAPI(title="EE Club AI Scheduler")
 
+# السماح بالاتصال من أي مصدر (CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# قائمة الفترات الرسمية بناءً على نظام الكلية
 VALID_SLOTS = ["54", "86", "44", "80", "57", "47", "63", "52", "51", "88", "84"]
 
 def extract_schedule_logic(text):
-    """خوارزمية استخراج المواد والأوقات من النص المستخرج"""
+    """خوارزمية ذكية لاستخراج المواد وتوزيعها"""
     results = []
-    lines = text.split('\n')
+    # تنظيف النص من الفراغات الزائدة
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
     for line in lines:
         # البحث عن رمز المادة (مثل EE 202)
         course_match = re.search(r'([A-Z]{2,4}\s?\d{3})', line, re.IGNORECASE)
         if course_match:
             name = course_match.group(1).upper().replace(' ', '')
-            # البحث عن أرقام الفترات المكونة من رقمين
+            
+            # البحث عن أرقام الفترات المكونة من رقمين فقط
             slots = re.findall(r'\b(\d{2})\b', line)
             valid_slots = [s for s in slots if s in VALID_SLOTS]
             
+            # توزيع افتراضي: نضع المحاضرات في أيام متتالية كمسودة
             for i, s in enumerate(valid_slots):
                 results.append({
                     "day": i % 5, 
                     "slotId": s,
                     "name": name,
-                    "room": "قاعة PDF",
+                    "room": "مستخرج تلقائياً",
                     "color": {"bg": "#4f46e5", "text": "#ffffff"}
                 })
     return results
@@ -46,31 +54,43 @@ def extract_schedule_logic(text):
 @app.post("/upload-schedule/")
 async def analyze_schedule(file: UploadFile = File(...)):
     extracted_text = ""
-    
     try:
-        # الحالة الأولى: الملف PDF
+        # 1. إذا كان الملف PDF (الدقة الأعلى)
         if file.content_type == "application/pdf":
-            with pdfplumber.open(io.BytesIO(await file.read())) as pdf:
+            pdf_content = await file.read()
+            with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
                 for page in pdf.pages:
                     extracted_text += page.extract_text() + "\n"
         
-        # الحالة الثانية: الملف صورة
+        # 2. إذا كان الملف صورة (استخدام OCR)
         elif file.content_type.startswith("image/"):
-            image = Image.open(io.BytesIO(await file.read())).convert('L')
+            image_content = await file.read()
+            image = Image.open(io.BytesIO(image_content)).convert('L')
             extracted_text = pytesseract.image_to_string(image, lang='eng')
         
         else:
-            raise HTTPException(status_code=400, detail="نوع الملف غير مدعوم")
+            raise HTTPException(status_code=400, detail="نوع الملف غير مدعوم. يرجى رفع صورة أو PDF.")
 
+        # 3. معالجة النص المستخرج
         final_data = extract_schedule_logic(extracted_text)
 
         if not final_data:
-            return {"status": "warning", "message": "لم نجد مواد، جرب نسخة الـ PDF الرسمية", "data": []}
+            return {
+                "status": "warning", 
+                "message": "نجحنا في قراءة الملف لكن لم نجد مواد واضحة. تأكد أن الملف يحتوي على جدولك الدراسي.",
+                "data": []
+            }
 
-        return {"status": "success", "data": final_data}
+        return {
+            "status": "success",
+            "message": f"تم استخراج {len(final_data)} محاضرة بنجاح!",
+            "data": final_data
+        }
 
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print(f"Server Error: {str(e)}")
+        return {"status": "error", "message": "حدث خطأ فني أثناء المعالجة."}
 
 @app.get("/")
-def home(): return {"status": "online"}
+def home():
+    return {"status": "online", "service": "EE Smart Scheduler API"}
