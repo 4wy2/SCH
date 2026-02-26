@@ -21,6 +21,7 @@ def parse_rcjy_table(table):
         row_str = str(row[0] or "")
         if "Course Code" in row_str or "Total" in row_str: continue
 
+        # تقسيم الخلايا التي تحتوي على مواد متعددة في نفس الصف
         split_cells = [str(cell).split('\n') if cell else [""] for cell in row]
         num_entries = max(len(cell) for cell in split_cells)
 
@@ -31,13 +32,26 @@ def parse_rcjy_table(table):
             if not re.search(r'[A-Za-z]{2,4}\s?\d{3}', course_code): continue
             course_name_clean = course_code.replace(" ", "").upper()
 
+            # --- 🪄 التعديل السحري لسحب كل القاعات ---
             room = "TBA"
-            if len(split_cells) > 13:
-                room_col = split_cells[13]
-                room = room_col[i].strip() if i < len(room_col) else room_col[-1].strip()
-            elif len(split_cells) > 12:
-                room_col = split_cells[12]
-                room = room_col[i].strip() if i < len(room_col) else room_col[-1].strip()
+            room_idx = 13 if len(row) > 13 else (12 if len(row) > 12 else -1)
+            
+            if room_idx != -1:
+                # نأخذ المربع الأصلي للقاعة بالكامل بدون تقسيم
+                original_room_cell = str(row[room_idx] or "").strip()
+                room_col_split = split_cells[room_idx]
+                
+                if num_entries == 1:
+                    # إذا كانت مادة واحدة، اسحب كل القاعات المكتوبة وادمجها
+                    room = original_room_cell.replace('\n', ' و ')
+                else:
+                    # إذا كانت مادتين مدموجتين، وزع القاعات بالترتيب
+                    room = room_col_split[i].strip() if i < len(room_col_split) else room_col_split[-1].strip()
+                    
+            # تنظيف المسافات الزائدة لو وجدت
+            room = re.sub(r'\s+و\s+', ' و ', room).strip()
+            if room.endswith(' و'): room = room[:-2] # إزالة حرف الواو إذا كان في الأخير
+            # ----------------------------------------
 
             for day_idx in range(7, 12):
                 if day_idx >= len(split_cells): break
