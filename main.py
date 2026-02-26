@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
+import pytesseract
+from PIL import Image, ImageEnhance
 import io
 import re
 
@@ -13,67 +15,99 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# الفترات الرسمية في الهيئة الملكية [cite: 10]
 VALID_SLOTS = ["44", "47", "51", "52", "54", "57", "63", "80", "86"]
 
+# === 1. معالجة الـ PDF (دقة 100% ومحمي من الانهيار) ===
 def parse_rcjy_table(table):
     results = []
-    if not table:
-        return results
-
+    if not table: return results
     for row in table:
-        # تنظيف الصف وتجنب العناوين 
-        if not row or "Course Code" in str(row[0]) or "Total" in str(row[0]):
-            continue
+        if not row or len(row) < 12: continue
+        row_str = str(row[0] or "")
+        if "Course Code" in row_str or "Total" in row_str: continue
 
-        # معالجة الخلايا المتداخلة (مثل EE 204 و EE 206) 
-        # نقوم بتقسيم كل خلية بناءً على السطر الجديد
         split_cells = [str(cell).split('\n') if cell else [""] for cell in row]
-        
-        # معرفة عدد المواد الموجودة في هذا الصف (عادة 1 أو 2)
         num_entries = max(len(cell) for cell in split_cells)
 
         for i in range(num_entries):
-            # استخراج بيانات المادة الفرعية
-            course_code = split_cells[0][i].strip() if i < len(split_cells[0]) else split_cells[0][-1].strip()
-            room = split_cells[13][i].strip() if i < len(split_cells[13]) else split_cells[13][-1].strip()
+            course_col = split_cells[0]
+            course_code = course_col[i].strip() if i < len(course_col) else course_col[-1].strip()
 
-            if not course_code or len(course_code) < 4:
-                continue
+            # التأكد أن النص هو رمز مادة هندسية أو عامة حقيقي
+            if not re.search(r'[A-Za-z]{2,4}\s?\d{3}', course_code): continue
+            course_name_clean = course_code.replace(" ", "").upper()
 
-            # فحص الأعمدة من 7 إلى 11 (Sun to Thu) 
+            # حماية الكود من الانهيار إذا اختلفت الأعمدة
+            room = "TBA"
+            if len(split_cells) > 13:
+                room_col = split_cells[13]
+                room = room_col[i].strip() if i < len(room_col) else room_col[-1].strip()
+            elif len(split_cells) > 12:
+                room_col = split_cells[12]
+                room = room_col[i].strip() if i < len(room_col) else room_col[-1].strip()
+
             for day_idx in range(7, 12):
-                day_content = split_cells[day_idx][i] if i < len(split_cells[day_idx]) else split_cells[day_idx][-1]
+                if day_idx >= len(split_cells): break
+                day_col = split_cells[day_idx]
+                day_content = day_col[i] if i < len(day_col) else day_col[-1]
                 
-                # البحث عن أرقام الفترات (مثل 63,51,52) 
                 if day_content:
                     slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', day_content)
                     for s in slots:
                         results.append({
-                            "day": day_idx - 7, # تحويل من (7-11) إلى (0-4)
-                            "slotId": s,
-                            "name": course_code.replace(" ", ""),
-                            "room": room,
-                            "color": {"bg": "#eff6ff", "text": "#1e40af"} # ألوان افتراضية
+                            "day": day_idx - 7, 
+                            "slotId": s, 
+                            "name": course_name_clean, 
+                            "room": room
                         })
     return results
 
+# === 2. معالجة الصور (الذكاء الاصطناعي - مسودة ذكية) ===
+def parse_image(image_bytes):
+    results = []
+    try:
+        img = Image.open(io.BytesIO(image_bytes)).convert('L')
+        img = ImageEnhance.Contrast(img).enhance(2.0)
+        text = pytesseract.image_to_string(img)
+        
+        for line in text.split('\n'):
+            course_match = re.search(r'([A-Za-z]{2,4}\s?\d{3})', line)
+            if course_match:
+                course_name = course_match.group(1).replace(" ", "").upper()
+                slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', line)
+                day_counter = 0
+                for s in set(slots):
+                    results.append({
+                        "day": day_counter % 5, # توزيع مبدئي
+                        "slotId": s,
+                        "name": course_name,
+                        "room": "تأكد من القاعة"
+                    })
+                    day_counter += 1
+    except Exception as e:
+        print("Image OCR Error:", e)
+    return results
+
+# === مسار الرفع الشامل ===
 @app.post("/upload-schedule/")
 async def upload_schedule(file: UploadFile = File(...)):
     try:
         content = await file.read()
         if file.content_type == "application/pdf":
             with pdfplumber.open(io.BytesIO(content)) as pdf:
-                # استخراج الجدول بإعدادات دقيقة لخطوط الهيئة الملكية
-                table = pdf.pages[0].extract_table({
-                    "vertical_strategy": "lines",
-                    "horizontal_strategy": "lines"
-                })
+                table = pdf.pages[0].extract_table({"vertical_strategy": "lines", "horizontal_strategy": "lines"})
                 data = parse_rcjy_table(table)
-                return {"status": "success", "data": data}
-        return {"status": "error", "message": "يرجى رفع ملف PDF"}
+                if not data: return {"status": "error", "message": "لم يتم العثور على مواد. تأكد من أن الملف هو جدول الإيدوقيت الأصلي."}
+                return {"status": "success", "data": data, "type": "pdf"}
+                
+        elif file.content_type.startswith("image/"):
+            data = parse_image(content)
+            if not data: return {"status": "error", "message": "لم نتمكن من قراءة الصورة. تأكد أنها واضحة ومقصوصة على الجدول."}
+            return {"status": "success", "data": data, "type": "image", "message": "تم سحب المواد كمسودة. يرجى مراجعة وتعديل الأيام."}
+            
+        return {"status": "error", "message": "صيغة غير مدعومة. ارفع PDF أو صورة."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @app.get("/")
-def home(): return {"status": "online"}
+def home(): return {"status": "online", "message": "EV Server is running!"}
