@@ -1,16 +1,12 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-import pytesseract
+import pdfplumber
 import io
 import re
-import pdfplumber
-
-# إعداد مسار المحرك على سيرفر Render
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
 app = FastAPI()
 
+# تفعيل الـ CORS لضمان اتصال المتصفح بالسيرفر بدون مشاكل
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,67 +14,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# الفترات المعتمدة في نظام الهيئة الملكية 
-VALID_SLOTS = ["44", "47", "51", "52", "54", "57", "63", "80", "86"]
+# تعريف أوقات الفترات الرسمية بناءً على الجدول المرفق 
+PERIODS_MAP = {
+    "44": "09:15-10:05", "47": "12:15-13:05", "51": "15:15-16:05",
+    "52": "14:15-15:05", "54": "07:15-08:05", "57": "11:15-12:05",
+    "63": "13:15-14:05", "80": "10:15-11:05", "86": "08:15-09:05"
+}
 
-def extract_schedule_logic(text):
+def clean_and_parse(text):
     results = []
-    # تنظيف النص ومعالجة الأسطر المتداخلة 
     lines = text.split('\n')
     
-    current_course = None
+    # نمط البحث عن رموز المواد (حرفين ثم مسافة اختيارية ثم 3 أرقام) 
+    course_pattern = r'([A-Z]{2,3}\s?\d{3})'
+    
     for line in lines:
-        # البحث عن رمز المادة (مثل EE 202) 
-        course_match = re.search(r'([A-Z]{2,4}\s?\d{3})', line, re.IGNORECASE)
-        
-        if course_match:
-            current_course = course_match.group(1).upper().replace(' ', '')
-        
-        if current_course:
-            # استخراج الفترات حتى لو كانت متلاصقة بفاصلة 
-            # نبحث عن الأرقام الموجودة في القائمة المعتمدة فقط 
+        # البحث عن رمز المادة في السطر
+        match = re.search(course_pattern, line)
+        if match:
+            course_code = match.group(1).replace(" ", "")
+            
+            # استخراج كافة أرقام الفترات المكونة من خانتين والموجودة في القائمة الرسمية 
+            # نستخدم regex يبحث عن الأرقام المعرفة في PERIODS_MAP
             found_slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', line)
             
-            # تحديد اليوم بناءً على ترتيب الظهور في السطر (تقريبي)
-            # الهيئة الملكية ترتبها: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس 
-            for slot in found_slots:
-                # منطق ذكي لتخمين اليوم بناءً على موقع الرقم في السطر
-                # هذا يساعد في تقليل الخطأ الناتج عن دمج النصوص
-                day_map = 0
-                if "Theoretical" in line or "Practical" in line:
-                    # توزيع أولي؛ الطالب سيقوم بالتحريك النهائي
-                    day_map = len(results) % 5 
-
-                results.append({
-                    "day": day_index_logic(line, slot), 
-                    "slotId": slot,
-                    "name": current_course,
-                    "room": "RC-Building",
-                    "color": {"bg": "#4f46e5", "text": "#ffffff"}
-                })
+            if found_slots:
+                # توزيع الفترات المستخرجة على الأيام بناءً على موقعها في السطر
+                # في جداول الهيئة، الترتيب هو: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس 
+                for idx, slot in enumerate(found_slots):
+                    # نحدد اليوم بشكل تقريبي بناءً على ترتيب الظهور في السطر المنسوخ
+                    results.append({
+                        "day": idx % 5, 
+                        "slotId": slot,
+                        "name": course_code,
+                        "room": "RC-Building", # يمكن تطوير استخراج القاعة لاحقاً
+                        "color": {"bg": "#1e40af", "text": "#ffffff"}
+                    })
     return results
-
-def day_index_logic(line, slot):
-    # محاولة تحديد اليوم بناءً على ترتيب الفترات في سطر ملف الهيئة 
-    # الأحد هو أول عمود بيانات بعد خانة النشاط (Activity) 
-    return 0 # نترك للمستخدم التعديل البسيط لضمان الدقة 100%
 
 @app.post("/upload-schedule/")
 async def analyze_schedule(file: UploadFile = File(...)):
-    extracted_text = ""
     try:
+        content = await file.read()
+        extracted_text = ""
+        
+        # تحليل ملفات الـ PDF (الدقة الأعلى للملف المرفق)
         if file.content_type == "application/pdf":
-            with pdfplumber.open(io.BytesIO(await file.read())) as pdf:
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
                 for page in pdf.pages:
                     extracted_text += page.extract_text() + "\n"
-        elif file.content_type.startswith("image/"):
-            image = Image.open(io.BytesIO(await file.read())).convert('L')
-            extracted_text = pytesseract.image_to_string(image, lang='eng')
         
-        final_data = extract_schedule_logic(extracted_text)
-        return {"status": "success", "data": final_data}
+        data = clean_and_parse(extracted_text)
+        return {"status": "success", "data": data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @app.get("/")
-def home(): return {"status": "online"}
+def health(): return {"status": "online"}
