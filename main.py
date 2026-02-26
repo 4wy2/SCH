@@ -6,7 +6,6 @@ import re
 
 app = FastAPI()
 
-# تفعيل الـ CORS لضمان اتصال المتصفح بالسيرفر بدون مشاكل
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,60 +13,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# تعريف أوقات الفترات الرسمية بناءً على الجدول المرفق 
-PERIODS_MAP = {
-    "44": "09:15-10:05", "47": "12:15-13:05", "51": "15:15-16:05",
-    "52": "14:15-15:05", "54": "07:15-08:05", "57": "11:15-12:05",
-    "63": "13:15-14:05", "80": "10:15-11:05", "86": "08:15-09:05"
-}
+# الفترات الرسمية في الهيئة الملكية [cite: 10]
+VALID_SLOTS = ["44", "47", "51", "52", "54", "57", "63", "80", "86"]
 
-def clean_and_parse(text):
+def parse_rcjy_table(table):
     results = []
-    lines = text.split('\n')
-    
-    # نمط البحث عن رموز المواد (حرفين ثم مسافة اختيارية ثم 3 أرقام) 
-    course_pattern = r'([A-Z]{2,3}\s?\d{3})'
-    
-    for line in lines:
-        # البحث عن رمز المادة في السطر
-        match = re.search(course_pattern, line)
-        if match:
-            course_code = match.group(1).replace(" ", "")
-            
-            # استخراج كافة أرقام الفترات المكونة من خانتين والموجودة في القائمة الرسمية 
-            # نستخدم regex يبحث عن الأرقام المعرفة في PERIODS_MAP
-            found_slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', line)
-            
-            if found_slots:
-                # توزيع الفترات المستخرجة على الأيام بناءً على موقعها في السطر
-                # في جداول الهيئة، الترتيب هو: الأحد، الاثنين، الثلاثاء، الأربعاء، الخميس 
-                for idx, slot in enumerate(found_slots):
-                    # نحدد اليوم بشكل تقريبي بناءً على ترتيب الظهور في السطر المنسوخ
-                    results.append({
-                        "day": idx % 5, 
-                        "slotId": slot,
-                        "name": course_code,
-                        "room": "RC-Building", # يمكن تطوير استخراج القاعة لاحقاً
-                        "color": {"bg": "#1e40af", "text": "#ffffff"}
-                    })
+    if not table:
+        return results
+
+    for row in table:
+        # تنظيف الصف وتجنب العناوين 
+        if not row or "Course Code" in str(row[0]) or "Total" in str(row[0]):
+            continue
+
+        # معالجة الخلايا المتداخلة (مثل EE 204 و EE 206) 
+        # نقوم بتقسيم كل خلية بناءً على السطر الجديد
+        split_cells = [str(cell).split('\n') if cell else [""] for cell in row]
+        
+        # معرفة عدد المواد الموجودة في هذا الصف (عادة 1 أو 2)
+        num_entries = max(len(cell) for cell in split_cells)
+
+        for i in range(num_entries):
+            # استخراج بيانات المادة الفرعية
+            course_code = split_cells[0][i].strip() if i < len(split_cells[0]) else split_cells[0][-1].strip()
+            room = split_cells[13][i].strip() if i < len(split_cells[13]) else split_cells[13][-1].strip()
+
+            if not course_code or len(course_code) < 4:
+                continue
+
+            # فحص الأعمدة من 7 إلى 11 (Sun to Thu) 
+            for day_idx in range(7, 12):
+                day_content = split_cells[day_idx][i] if i < len(split_cells[day_idx]) else split_cells[day_idx][-1]
+                
+                # البحث عن أرقام الفترات (مثل 63,51,52) 
+                if day_content:
+                    slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', day_content)
+                    for s in slots:
+                        results.append({
+                            "day": day_idx - 7, # تحويل من (7-11) إلى (0-4)
+                            "slotId": s,
+                            "name": course_code.replace(" ", ""),
+                            "room": room,
+                            "color": {"bg": "#eff6ff", "text": "#1e40af"} # ألوان افتراضية
+                        })
     return results
 
 @app.post("/upload-schedule/")
-async def analyze_schedule(file: UploadFile = File(...)):
+async def upload_schedule(file: UploadFile = File(...)):
     try:
         content = await file.read()
-        extracted_text = ""
-        
-        # تحليل ملفات الـ PDF (الدقة الأعلى للملف المرفق)
         if file.content_type == "application/pdf":
             with pdfplumber.open(io.BytesIO(content)) as pdf:
-                for page in pdf.pages:
-                    extracted_text += page.extract_text() + "\n"
-        
-        data = clean_and_parse(extracted_text)
-        return {"status": "success", "data": data}
+                # استخراج الجدول بإعدادات دقيقة لخطوط الهيئة الملكية
+                table = pdf.pages[0].extract_table({
+                    "vertical_strategy": "lines",
+                    "horizontal_strategy": "lines"
+                })
+                data = parse_rcjy_table(table)
+                return {"status": "success", "data": data}
+        return {"status": "error", "message": "يرجى رفع ملف PDF"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @app.get("/")
-def health(): return {"status": "online"}
+def home(): return {"status": "online"}
