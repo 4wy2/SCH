@@ -1,8 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
-import pytesseract
-from PIL import Image
 import io
 import re
 
@@ -29,6 +27,7 @@ def parse_rcjy_table(table):
         for i in range(num_entries):
             course_col = split_cells[0]
             course_code = course_col[i].strip() if i < len(course_col) else course_col[-1].strip()
+
             if not re.search(r'[A-Za-z]{2,4}\s?\d{3}', course_code): continue
             course_name_clean = course_code.replace(" ", "").upper()
 
@@ -48,35 +47,13 @@ def parse_rcjy_table(table):
                 if day_content:
                     slots = re.findall(r'\b(44|47|51|52|54|57|63|80|86)\b', day_content)
                     for s in slots:
-                        results.append({"day": day_idx - 7, "slotId": s, "name": course_name_clean, "room": room})
+                        results.append({
+                            "day": day_idx - 7, 
+                            "slotId": s, 
+                            "name": course_name_clean, 
+                            "room": room
+                        })
     return results
-
-def parse_image(image_bytes):
-    try:
-        # إزالة الفلاتر لكي لا تتشوه ألوان الجدول الفاتحة
-        img = Image.open(io.BytesIO(image_bytes))
-        
-        # وضع PSM 11 يساعد في قراءة الجداول المبعثرة بشكل أفضل
-        text = pytesseract.image_to_string(img, config='--psm 11')
-        
-        courses_found = re.findall(r'[A-Za-z]{2,4}\s?\d{3}', text)
-        unique_courses = list(set([c.replace(" ", "").upper() for c in courses_found]))
-        
-        if not unique_courses:
-            # نرجع النص الذي استطاع قراءته لنرى أين الخلل
-            return [], text 
-            
-        results = []
-        default_slots = ["54", "86", "44", "80", "57", "47", "63", "52", "51"]
-        for idx, course in enumerate(unique_courses):
-            slot = default_slots[idx % len(default_slots)]
-            results.append({"day": 0, "slotId": slot, "name": course, "room": "مسودة-عدل"})
-            results.append({"day": 2, "slotId": slot, "name": course, "room": "مسودة-عدل"})
-        return results, text
-        
-    except Exception as e:
-        # نرفع الخطأ لكي يظهر في واجهة الموقع!
-        raise Exception(f"Tesseract Error: {str(e)}")
 
 @app.post("/upload-schedule/")
 async def upload_schedule(file: UploadFile = File(...)):
@@ -86,28 +63,12 @@ async def upload_schedule(file: UploadFile = File(...)):
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 table = pdf.pages[0].extract_table({"vertical_strategy": "lines", "horizontal_strategy": "lines"})
                 data = parse_rcjy_table(table)
-                if not data: return {"status": "error", "message": "لم يتم العثور على مواد بالـ PDF."}
+                if not data: return {"status": "error", "message": "لم يتم العثور على مواد. تأكد من أن الملف هو جدول الإيدوقيت الأصلي."}
                 return {"status": "success", "data": data, "type": "pdf"}
-                
-        elif file.content_type.startswith("image/"):
-            try:
-                data_result = parse_image(content)
-                data = data_result[0]
-                raw_text = data_result[1]
-                
-                if not data: 
-                    # سيعرض لك ماذا قرأ السيرفر بالضبط من الصورة!
-                    snippet = raw_text[:100].replace('\n', ' ')
-                    return {"status": "error", "message": f"السيرفر قرأ هذا النص فقط: ({snippet}) ولم يجد مواد."}
-                    
-                return {"status": "success", "data": data, "type": "image", "message": "تم سحب المواد كمسودة. يرجى תفعيل وضع التعديل."}
-            except Exception as img_e:
-                # إذا لم يكن Tesseract مثبتاً ستظهر هذه الرسالة
-                return {"status": "error", "message": f"السيرفر يفتقد محرك الصور: {str(img_e)}"}
-                
-        return {"status": "error", "message": "صيغة غير مدعومة. ارفع PDF أو صورة."}
+        
+        return {"status": "error", "message": "عذراً، النظام يقبل ملفات PDF فقط لضمان الدقة 100%."}
     except Exception as e:
-        return {"status": "error", "message": f"خطأ عام: {str(e)}"}
+        return {"status": "error", "message": f"حدث خطأ: {str(e)}"}
 
 @app.get("/")
-def home(): return {"status": "online"}
+def home(): return {"status": "online", "message": "EV Fast PDF Parser is running!"}
