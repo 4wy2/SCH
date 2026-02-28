@@ -67,7 +67,7 @@
         font-size: 13px;
         animation: slideDown 0.5s ease-out;
     }
-    #shareBanner span { color: #fff; }
+    #shareBanner span { color: #fff; line-height: 1.5; }
     #shareBanner button {
         background: white; color: var(--primary); border: none; padding: 8px 15px; border-radius: 10px; font-weight: 900; font-size: 11px; cursor: pointer; transition: 0.3s;
     }
@@ -118,6 +118,11 @@
     }
     .row:hover { background: rgba(255,255,255,0.06); transform: translateY(-3px); border-color: rgba(255,255,255,0.15); }
 
+    /* --- تنسيق وضع الاستعراض (للقراءة فقط) --- */
+    .read-only-header, .read-only-rows .row {
+        grid-template-columns: 1fr 115px 110px 85px !important; /* إخفاء عمود الأزرار */
+    }
+
     /* تنسيقات عناصر الصف */
     .exam-info { text-align: right !important; display: flex; flex-direction: column; justify-content: center; padding-right: 20px; flex: 1.4; overflow: hidden; }
     .exam-info .label { color: #ffd166; font-size: 15px; font-weight: 900; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -164,6 +169,10 @@
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
         .table-header, .row { grid-template-columns: 1fr 65px 65px 50px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
+        
+        /* ضبط المساحات في الجوال للمشاركة */
+        .read-only-header, .read-only-rows .row { grid-template-columns: 1fr 65px 65px 50px !important; }
+
         .table-header { font-size: 9px; padding: 8px 5px; }
         .exam-info .label { font-size: 12px !important; }
         .exam-info .sub { font-size: 8px !important; line-height: 1.1; }
@@ -229,11 +238,11 @@
 
 <main class="app">
     <div id="shareBanner">
-        <span>👀 أنت تستعرض جدول صديقك حالياً</span>
+        <span>👀 أنت تستعرض جدول صديقك حالياً<br><small style="opacity: 0.7; font-size: 10px;">(وضع القراءة فقط)</small></span>
         <button onclick="window.location.href=window.location.pathname">أنشئ جدولي الخاص ✨</button>
     </div>
 
-    <div class="search-wrapper">
+    <div class="search-wrapper" id="mainSearchWrapper">
         <div class="ee-logo-area" style="margin-bottom: 15px;">
             <i class="fa-solid fa-bolt-lightning" style="color: var(--primary); font-size: 40px; filter: drop-shadow(0 0 12px var(--primary));"></i>
         </div>
@@ -278,7 +287,7 @@
         <div>التاريخ</div>
         <div>الوقت</div>
         <div>المدة</div>
-        <div>حفظ</div>
+        <div id="saveColumnHeader">حفظ</div>
     </div>
     
     <div id="searchRows">
@@ -304,6 +313,7 @@
     let myExams = JSON.parse(localStorage.getItem('yic_saved_exams')) || [];
     let searchTimeout;
     let countdownTimer;
+    let isSharedView = false; // متغير مهم لمعرفة حالة وضع المشاركة
 
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toastMessage');
@@ -371,7 +381,7 @@
                 localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
                 renderMySchedule();
                 
-                // فحص الرابط بعد تحميل البيانات
+                // فحص الرابط بعد تحميل البيانات مباشرة
                 checkSharedSchedule();
             }
         } catch (error) {
@@ -406,17 +416,31 @@
         const isPM = ex.time.toUpperCase().includes('PM');
         const timeColor = isPM ? '#ff9f43' : '#00d2d3';
 
-        const sameDayCount = myExams.filter(e => e.date.split(' ')[0] === dateNum).length;
+        // إخفاء التنبيهات إذا كنا في وضع استعراض جدول الصديق
         let conflictWarning = '';
-        
-        if (isSaved && sameDayCount > 1) {
-            conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>اختبار بنفس اليوم</span>`;
-        } else if (!isSaved && sameDayCount >= 1) {
-            conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>لديك اختبار بهذا اليوم</span>`;
+        if (!isSharedView) {
+            const sameDayCount = myExams.filter(e => e.date.split(' ')[0] === dateNum).length;
+            if (isSaved && sameDayCount > 1) {
+                conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>اختبار بنفس اليوم</span>`;
+            } else if (!isSaved && sameDayCount >= 1) {
+                conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>لديك اختبار بهذا اليوم</span>`;
+            }
         }
 
         const highlightedCode = highlightText(ex.code, searchQuery);
         const highlightedName = highlightText(ex.course_name, searchQuery);
+
+        // إخفاء عمود الأزرار تماماً في وضع المشاركة
+        let actionsHTML = '';
+        if (!isSharedView) {
+            actionsHTML = `
+                <div class="exam-actions">
+                    <button class="btn-action btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave('${ex.id}')">
+                        <i class="fa-solid ${isSaved ? 'fa-xmark' : 'fa-plus'}"></i>
+                    </button>
+                </div>
+            `;
+        }
 
         row.innerHTML = `
             <div class="exam-info">
@@ -445,16 +469,14 @@
                 <span>${ex.actual_size} ط</span>
             </div>
 
-            <div class="exam-actions">
-                <button class="btn-action btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave('${ex.id}')">
-                    <i class="fa-solid ${isSaved ? 'fa-xmark' : 'fa-plus'}"></i>
-                </button>
-            </div>
+            ${actionsHTML}
         `;
         return row;
     }
         
     function renderMySchedule() {
+        if (isSharedView) return; // لا تقم بعرض الجدول الشخصي في وضع الاستعراض
+
         const container = document.getElementById('myRows');
         const section = document.getElementById('myScheduleSection');
         
@@ -490,6 +512,8 @@
     }
 
     function doSearch() {
+        if (isSharedView) return; // إيقاف البحث في وضع الاستعراض
+
         const rawQuery = document.getElementById('searchInput').value;
         const cleanQuery = rawQuery.toLowerCase().replace(/\s+/g, '');
         const container = document.getElementById('searchRows');
@@ -530,6 +554,8 @@
     }
 
     function toggleSave(id) {
+        if (isSharedView) return; // لا يمكن التعديل في وضع المشاركة
+
         const index = myExams.findIndex(e => e.id === id);
         
         if (index > -1) {
@@ -564,8 +590,9 @@
     }
 
     function updateCountdown(nextExam) {
+        if (isSharedView) return; // لا تعرض العداد الخاص بك عند استعراض جدول الصديق
+
         const el = document.getElementById('countdown');
-        
         clearInterval(countdownTimer);
         
         if (!nextExam) {
@@ -613,7 +640,7 @@
         countdownTimer = setInterval(tick, 60000); 
     }
 
-    // --- دالة مشاركة الجدول وتشفير الرابط ---
+    // --- دالة مشاركة الجدول وتشفير الرابط (بدون أسماء صريحة) ---
     function shareSchedule() {
         if (myExams.length === 0) {
             showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning");
@@ -633,7 +660,7 @@
         });
     }
 
-    // --- دالة قراءة الرابط المشفر وعرض جدول الصديق ---
+    // --- دالة قراءة الرابط المشفر وعرض جدول الصديق (وضع القراءة فقط) ---
     function checkSharedSchedule() {
         const urlParams = new URLSearchParams(window.location.search);
         const sharedEncoded = urlParams.get('s');
@@ -642,8 +669,7 @@
         
         if (sharedEncoded) {
             try {
-                // فك التشفير
-                codesStr = atob(sharedEncoded);
+                codesStr = atob(sharedEncoded); // فك التشفير
             } catch (e) {
                 console.error("رابط غير صالح");
             }
@@ -651,31 +677,40 @@
 
         if (codesStr) {
             const codesArray = codesStr.split(',').map(c => c.toLowerCase().trim());
-            
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
             if (sharedExams.length > 0) {
-                // إظهار الشريط الترحيبي الخاص بجدول الصديق
+                isSharedView = true; // تفعيل وضع القراءة فقط
+
+                // 1. إظهار الشريط الترحيبي
                 document.getElementById('shareBanner').style.display = 'flex';
                 
-                // تعديل عنوان قسم النتائج
+                // 2. إخفاء الواجهة الشخصية الخاصة بالطالب (مربع البحث، جدوله الشخصي، والعداد)
+                document.getElementById('mainSearchWrapper').style.display = 'none';
+                document.getElementById('myScheduleSection').style.display = 'none';
+                
+                // 3. تعديل عنوان قسم النتائج
                 document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-user-group"></i> الجدول المُشارك من صديقك';
                 
                 const container = document.getElementById('searchRows');
                 const header = document.getElementById('searchHeader');
                 
-                container.innerHTML = '';
+                // 4. تعديل رأس الجدول لإخفاء كلمة "حفظ" ومطابقة التصميم
+                header.innerHTML = '<div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div>';
+                header.classList.add('read-only-header');
                 header.style.display = 'grid';
                 
+                container.innerHTML = '';
+                container.classList.add('read-only-rows');
+                
                 sharedExams.forEach(ex => {
-                    const isSaved = myExams.some(s => s.id === ex.id);
-                    container.appendChild(createRow(ex, isSaved));
+                    container.appendChild(createRow(ex, false));
                 });
                 
-                // التوجه التلقائي نحو الشريط الترحيبي
+                // التوجه للشريط الأعلى
                 setTimeout(() => {
-                    document.getElementById('shareBanner').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 500);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
             }
         }
     }
