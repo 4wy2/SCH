@@ -20,7 +20,7 @@
         --accent: #1fc47c; 
         --danger: #ff4d6d; 
         --warning: #ff9f43;
-        --id-color: #48ffe8; /* لون زر الآي دي */
+        --ee-cyan: #48ffe8;
         --bg: #050816; 
         --glass-bg: rgba(13, 23, 56, 0.4);
         --row-bg: rgba(255, 255, 255, 0.02);
@@ -29,26 +29,43 @@
     }
     
     body { 
-        margin: 0; 
-        background: var(--bg); 
-        font-family: 'Tajawal', sans-serif; 
-        color: white; 
-        overflow-x: hidden; 
-        direction: rtl; 
+        margin: 0; background: var(--bg); font-family: 'Tajawal', sans-serif; 
+        color: white; overflow-x: hidden; direction: rtl; 
     }
 
-    /* 2. الخلفية السينمائية */
+    /* 2. النافذة المنبثقة الذكية (Pop-up) */
+    .popup-overlay {
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        z-index: 2000; display: none; justify-content: center; align-items: center;
+        padding: 20px; animation: fadeIn 0.4s ease-out;
+    }
+    .popup-content {
+        background: linear-gradient(180deg, rgba(13,23,56,0.95), rgba(5,8,22,0.95));
+        border: 1px solid var(--ee-cyan); border-radius: 28px;
+        padding: 40px 30px; text-align: center; max-width: 420px; width: 100%;
+        box-shadow: 0 30px 80px rgba(72, 255, 232, 0.2);
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .popup-icon { font-size: 55px; color: var(--ee-cyan); margin-bottom: 20px; filter: drop-shadow(0 0 20px rgba(72, 255, 232, 0.6)); }
+    .popup-title { font-size: 22px; font-weight: 900; margin: 0 0 10px; color: white; }
+    .popup-text { font-size: 14px; font-weight: 600; color: var(--text-dim); margin: 0 0 30px; line-height: 1.6; }
+    .btn-primary-glow {
+        display: block; width: 100%; padding: 15px; border-radius: 16px;
+        background: linear-gradient(135deg, rgba(72,255,232,1), rgba(47,123,255,.85));
+        color: #050816; font-weight: 900; font-size: 15px; border: none; cursor: pointer; 
+        transition: 0.3s; box-shadow: 0 10px 30px rgba(72, 255, 232, 0.3); margin-bottom: 15px; font-family: inherit;
+    }
+    .btn-primary-glow:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(72, 255, 232, 0.5); }
+    .btn-text-only { background: transparent; border: none; color: var(--text-dim); font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; transition: 0.3s; font-family: inherit; }
+    .btn-text-only:hover { color: white; }
+
+    /* 3. الخلفية السينمائية */
     .bg-blobs { position: fixed; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; }
-    .blob { 
-        position: absolute; filter: blur(100px); border-radius: 50%; opacity: 0.15; 
-        animation: move 20s infinite alternate ease-in-out; 
-    }
-    @keyframes move {
-        from { transform: translate(0, 0) scale(1); }
-        to { transform: translate(60px, 40px) scale(1.1); }
-    }
+    .blob { position: absolute; filter: blur(100px); border-radius: 50%; opacity: 0.15; animation: move 20s infinite alternate ease-in-out; }
+    @keyframes move { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, 40px) scale(1.1); } }
 
-    /* 3. حاوية التطبيق الرئيسية */
+    /* 4. حاوية التطبيق الرئيسية */
     .app { 
         width: min(950px, 96%); margin: 40px auto; 
         background: var(--glass-bg); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
@@ -56,54 +73,23 @@
         box-shadow: 0 40px 80px rgba(0,0,0,0.7); 
     }
 
-    /* --- شريط تنبيه المشاركة الذكي --- */
-    #shareBanner {
-        display: none;
-        background: linear-gradient(135deg, rgba(128, 66, 255, 0.2), rgba(31, 196, 124, 0.2));
-        border-bottom: 1px solid var(--border-color);
-        padding: 15px 25px;
-        align-items: center;
-        justify-content: space-between;
-        animation: slideDown 0.5s ease-out;
+    /* --- نظام التبويبات (Tabs) --- */
+    .tabs-container { display: flex; justify-content: center; gap: 10px; padding: 0 20px 20px; border-bottom: 1px solid var(--border-color); }
+    .tab-btn {
+        background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-dim);
+        padding: 12px 25px; border-radius: 14px; font-family: inherit; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px;
     }
-    .banner-text { display: flex; flex-direction: column; }
-    .banner-text span { color: #fff; font-weight: 900; font-size: 14px; }
-    .banner-text small { color: var(--accent); font-weight: 700; font-size: 10px; margin-top: 3px; }
-    
-    #shareBanner button {
-        background: white; color: var(--primary); border: none; padding: 10px 18px; border-radius: 12px; font-weight: 900; font-size: 12px; cursor: pointer; transition: 0.3s;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-    #shareBanner button:active { transform: scale(0.95); }
+    .tab-btn:hover { background: rgba(255,255,255,0.1); }
+    .tab-btn.active { background: linear-gradient(135deg, rgba(128, 66, 255, 0.2), rgba(31, 196, 124, 0.2)); border-color: var(--primary); color: white; box-shadow: 0 5px 20px rgba(128, 66, 255, 0.2); }
+    .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
+    .tab-content.active { display: block; }
 
-    /* --- زر الانتقال لصفحة البحث بالآي دي --- */
-    .id-link-banner {
-        background: linear-gradient(135deg, rgba(72, 255, 232, 0.1), rgba(47, 123, 255, 0.1));
-        border: 1px solid rgba(72, 255, 232, 0.25);
-        color: white;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        padding: 14px 20px;
-        border-radius: 18px;
-        margin: 0 auto 25px;
-        max-width: 450px;
-        font-weight: 800;
-        font-size: 14px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    .id-link-banner:hover {
-        background: linear-gradient(135deg, rgba(72, 255, 232, 0.2), rgba(47, 123, 255, 0.2));
-        transform: translateY(-3px);
-        box-shadow: 0 15px 35px rgba(72, 255, 232, 0.2);
-        border-color: rgba(72, 255, 232, 0.5);
-    }
-    .id-link-banner i.icon-main { color: var(--id-color); font-size: 18px; }
-    .id-link-banner i.icon-arrow { margin-right: auto; opacity: 0.5; font-size: 12px; transition: 0.3s; }
-    .id-link-banner:hover i.icon-arrow { transform: translateX(-5px); opacity: 1; color: var(--id-color); }
+    /* --- قسم الإدخال السريع (ID Search) --- */
+    .id-search-area { display: flex; gap: 10px; max-width: 450px; margin: 0 auto 30px; padding: 0 15px; }
+    .id-search-area input { flex: 1; padding: 14px 20px; border-radius: 16px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.05); color: white; outline: none; font-size: 16px; font-weight: 800; text-align: center; letter-spacing: 2px; transition: 0.3s; }
+    .id-search-area input:focus { border-color: var(--ee-cyan); box-shadow: 0 0 20px rgba(72, 255, 232, 0.2); }
+    .id-search-area button { background: linear-gradient(180deg, rgba(72,255,232,1), rgba(47,123,255,.85)); color: #071022; border: none; padding: 0 25px; border-radius: 16px; font-weight: 900; cursor: pointer; transition: 0.2s; font-family: inherit; }
+    .id-search-area button:active { transform: scale(0.95); }
 
     .countdown-bar { 
         background: linear-gradient(135deg, rgba(128, 66, 255, 0.1), rgba(31, 196, 124, 0.1));
@@ -115,8 +101,8 @@
     }
     @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    /* 4. قسم البحث */
-    .search-wrapper { padding: 30px 15px 20px; text-align: center; }
+    /* 5. قسم البحث اليدوي */
+    .search-wrapper { padding: 0 15px 20px; text-align: center; }
     .input-group { position: relative; max-width: 450px; margin: 0 auto; }
     .search-wrapper input { 
         width: 100%; padding: 14px 45px 14px 20px; border-radius: 16px; 
@@ -124,103 +110,63 @@
         color: white; outline: none; font-size: 14px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         backdrop-filter: blur(10px); box-sizing: border-box; 
     }
-    .search-wrapper input:focus { 
-        border-color: var(--primary); background: rgba(128, 66, 255, 0.08); box-shadow: 0 0 20px rgba(128, 66, 255, 0.2);
-    }
-    .search-icon {
-        position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
-        color: var(--primary); font-size: 16px; opacity: 0.8; transition: 0.3s;
-    }
+    .search-wrapper input:focus { border-color: var(--primary); background: rgba(128, 66, 255, 0.08); box-shadow: 0 0 20px rgba(128, 66, 255, 0.2); }
+    .search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 16px; opacity: 0.8; transition: 0.3s; }
     .search-wrapper input:focus + .search-icon { transform: translateY(-50%) scale(1.1); color: var(--accent); }
 
-    /* 5. نظام الجريد (المسطرة الموحدة) */
-    .table-header, .row { 
-        display: grid; grid-template-columns: 1fr 115px 110px 85px 55px; gap: 12px; 
-        align-items: center; padding: 15px 25px; margin: 8px 15px; 
-    }
-    .table-header { 
-        background: rgba(255,255,255,0.03); border-radius: 12px; font-size: 11px; font-weight: 800;
-        color: var(--text-dim); text-align: center;
-    }
+    /* 6. نظام الجريد (المسطرة الموحدة) */
+    .table-header, .row { display: grid; grid-template-columns: 1fr 115px 110px 85px 55px; gap: 12px; align-items: center; padding: 15px 25px; margin: 8px 15px; }
+    .id-grid .table-header, .id-grid .row { grid-template-columns: 1fr 115px 110px 85px 80px !important; }
+    .read-only-view .table-header, .read-only-view .row { grid-template-columns: 1fr 115px 110px 85px !important; }
+    
+    .table-header { background: rgba(255,255,255,0.03); border-radius: 12px; font-size: 11px; font-weight: 800; color: var(--text-dim); text-align: center; }
     .table-header div, .row > div { text-align: center; }
     .table-header div:first-child { text-align: right; padding-right: 10px; }
-    .row { 
-        background: var(--row-bg); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); 
-        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-    }
+    .row { background: var(--row-bg); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .row:hover { background: rgba(255,255,255,0.06); transform: translateY(-3px); border-color: rgba(255,255,255,0.15); }
-
-    /* --- تنسيق وضع الاستعراض (للقراءة فقط - يتم تطبيقه برمجياً) --- */
-    .read-only-view .table-header, .read-only-view .row {
-        grid-template-columns: 1fr 115px 110px 85px !important; /* مسح عمود الحفظ لترتيب التصميم */
-    }
 
     /* تنسيقات عناصر الصف */
     .exam-info { text-align: right !important; display: flex; flex-direction: column; justify-content: center; padding-right: 20px; flex: 1.4; overflow: hidden; }
     .exam-info .label { color: #ffd166; font-size: 15px; font-weight: 900; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
     .exam-info .sub { font-size: 9px; opacity: 0.8; font-weight: 500; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; margin-top: 2px; color: #fff; }
-    
     .exam-date { display: flex; justify-content: center; align-items: center; gap: 6px; flex: 1.2; border-right: 1px solid rgba(255,255,255,0.05); }
     .exam-date-text { text-align: left; }
     .exam-date-text b { display: block; font-size: 11px; color: #fff; line-height: 1; }
     .exam-date-text small { font-size: 8px; font-weight: 800; display: block; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
     .exam-date-line { width: 2px; height: 18px; opacity: 0.6; border-radius: 10px; }
-
     .exam-time { display: flex; justify-content: center; align-items: center; flex: 1.1; }
     .exam-time-inner { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 4px 6px; border-radius: 8px; width: 100%; max-width: 85px; text-align: center; }
     .exam-time-start { font-size: 10px; font-weight: 800; line-height: 1; }
     .exam-time-end { font-size: 8px; opacity: 0.3; margin-top: 2px; }
-
     .exam-duration { text-align: center; display: flex; flex-direction: column; justify-content: center; flex: 0.7; }
     .exam-duration span:first-child { font-size: 10px; font-weight: 700; color: #eee; display: block; }
     .exam-duration span:last-child { font-size: 8px; opacity: 0.3; display: block; }
-
+    .exam-venue { color: var(--ee-cyan); font-weight: 900; font-size: 12px; }
     .exam-actions { display: flex; justify-content: center; align-items: center; flex: 0.4; }
 
-    /* 6. الأزرار والعناوين */
-    .btn-action { 
-        border: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; display: flex; 
-        align-items: center; justify-content: center; background: rgba(128, 66, 255, 0.15); 
-        color: #b794ff; font-size: 13px; transition: 0.3s; margin: 0 auto; 
-    }
+    /* 7. الأزرار والعناوين */
+    .btn-action { border: none; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(128, 66, 255, 0.15); color: #b794ff; font-size: 13px; transition: 0.3s; margin: 0 auto; }
     .btn-action:active { transform: scale(0.9); }
     .btn-save.saved { background: var(--danger); color: white; transform: rotate(90deg); }
     
     .section-title { padding: 25px 25px 10px; font-size: 15px; color: var(--primary); font-weight: 900; display: flex; align-items: center; gap: 10px; }
-
-    /* تمييز النص (Highlight) */
     .highlight { background: rgba(255, 209, 102, 0.3); color: #ffd166; padding: 0 2px; border-radius: 4px; }
 
-    /* --- عنصر الطيران (Flying Element) --- */
-    .fly-item {
-        position: fixed;
-        z-index: 9999;
-        pointer-events: none;
-        color: var(--primary);
-        font-size: 20px;
-        transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); /* حركة انسيابية مرنة */
-        filter: drop-shadow(0 0 10px var(--primary));
-    }
-    .fly-item.delete {
-        color: var(--danger);
-        filter: drop-shadow(0 0 10px var(--danger));
-    }
+    /* تأثير الطيران */
+    .fly-item { position: fixed; z-index: 9999; pointer-events: none; color: var(--primary); font-size: 20px; transition: all 0.7s cubic-bezier(0.25, 1, 0.5, 1); filter: drop-shadow(0 0 10px var(--primary)); }
+    .fly-item.delete { color: var(--danger); filter: drop-shadow(0 0 10px var(--danger)); }
 
-    /* 7. التنسيق النحيف للجوال */
+    /* 8. التنسيق النحيف للجوال */
     @media (max-width: 600px) {
         .app { width: 100%; margin: 0; border-radius: 0; border: none; }
-        
-        #shareBanner { flex-direction: column; gap: 12px; text-align: center; }
-        #shareBanner button { width: 100%; }
-        
-        .search-wrapper { padding: 30px 15px; }
+        .tabs-container { padding: 0 10px 15px; }
+        .tab-btn { padding: 10px 15px; font-size: 11px; flex: 1; justify-content: center; }
+        .search-wrapper { padding: 15px 15px 20px; }
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
         .table-header, .row { grid-template-columns: 1fr 65px 65px 50px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
-        
-        /* ضبط المساحات في الجوال لوضع القراءة فقط */
+        .id-grid .table-header, .id-grid .row { grid-template-columns: 1fr 65px 65px 40px 45px !important; }
         .read-only-view .table-header, .read-only-view .row { grid-template-columns: 1fr 65px 65px 50px !important; }
-
         .table-header { font-size: 9px; padding: 8px 5px; }
         .exam-info .label { font-size: 12px !important; }
         .exam-info .sub { font-size: 8px !important; line-height: 1.1; }
@@ -233,49 +179,65 @@
         .empty-state i { font-size: 40px; }
         .empty-state p { font-size: 13px; }
         .back-home { top: 15px; right: 15px; padding: 8px 12px; font-size: 11px; }
-        
-        .id-link-banner { font-size: 12px; padding: 12px 15px; }
+        .popup-content { padding: 30px 20px; margin: 0 15px; }
     }
 
-    /* 8. تنسيق حالة البحث الفارغة */
+    /* 9. تنسيق حالة البحث الفارغة */
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; color: var(--text-dim); animation: fadeIn 0.8s ease-out; }
     .empty-state i { font-size: 55px; margin-bottom: 20px; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0.3; }
     .empty-state p { font-size: 16px; font-weight: 500; margin: 0; letter-spacing: 0.5px; opacity: 0.6; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes popIn { 0% { transform: scale(0.8) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
 
-    /* 9. زر الرجوع */
+    /* 10. زر الرجوع */
     .back-home { position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid var(--border-color); padding: 10px 18px; border-radius: 12px; color: white; text-decoration: none; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: 0.3s; z-index: 100; }
     .back-home:hover { background: rgba(128, 66, 255, 0.2); border-color: var(--primary); transform: translateX(-5px); }
 
-    /* 10. إشعارات التنبيه (Toast) */
+    /* 11. إشعارات التنبيه (Toast) */
     .toast {
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%) translateY(20px);
-        background: rgba(31, 196, 124, 0.95);
-        backdrop-filter: blur(10px);
-        color: white;
-        padding: 12px 25px;
-        border-radius: 50px;
-        font-size: 13px;
-        font-weight: 800;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        z-index: 1000;
-        text-align: center;
-        white-space: nowrap;
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: rgba(31, 196, 124, 0.95); backdrop-filter: blur(10px); color: white;
+        padding: 12px 25px; border-radius: 50px; font-size: 13px; font-weight: 800;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3); opacity: 0; visibility: hidden;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 3000;
+        text-align: center; white-space: nowrap;
     }
-    .toast.show {
-        opacity: 1;
-        visibility: visible;
-        transform: translateX(-50%) translateY(0);
+    .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+    #shareBanner { display: none; background: linear-gradient(135deg, rgba(128,66,255,0.2), rgba(31,196,124,0.2)); padding: 15px 25px; justify-content: space-between; align-items: center;}
+    #shareBanner button { background: white; color: var(--primary); border: none; padding: 10px 18px; border-radius: 12px; font-weight: 900; font-size: 12px; cursor: pointer; }
+    
+    /* تنسيق خاص للباج (Semester Pill) */
+    .semester-badge {
+        display: inline-block;
+        background: rgba(128, 66, 255, 0.15);
+        color: var(--primary);
+        font-size: 11px;
+        font-weight: 900;
+        padding: 6px 14px;
+        border-radius: 50px;
+        border: 1px solid rgba(128, 66, 255, 0.3);
+        margin-bottom: 15px;
+        letter-spacing: 0.5px;
     }
     </style>
 </head>
 <body>
+    
+    <div class="popup-overlay" id="takeoverPopup">
+        <div class="popup-content">
+            <i class="fa-solid fa-calendar-check popup-icon"></i>
+            <h2 class="popup-title">تم اعتماد الجدول الرسمي!</h2>
+            <p class="popup-text">وفر وقتك! يمكنك الآن البحث برقمك الأكاديمي لجلب جدولك المعتمد بضغطة زر بدلاً من البحث اليدوي.</p>
+            <button class="btn-primary-glow" onclick="switchToIdMode()">
+                <i class="fa-solid fa-id-card"></i> جلب جدولي بالرقم الأكاديمي
+            </button>
+            <button class="btn-text-only" onclick="closePopup()">
+                لا، أريد الاستمرار في البناء اليدوي
+            </button>
+        </div>
+    </div>
+
     <a href="https://Engineer-ee.com" class="back-home">
         <i class="fa-solid fa-arrow-right"></i> العودة 
     </a>
@@ -289,72 +251,94 @@
 <main class="app">
     <div id="shareBanner">
         <div class="banner-text">
-            <span>👀 أنت تستعرض جدول صديقك حالياً</span>
-            <small>وضع الاستعراض فقط (لا يمكنك التعديل هنا)</small>
+            <span style="color:#fff; font-weight:900;">👀 جدول صديقك</span>
+            <small style="color:var(--accent); font-weight:700;">وضع الاستعراض فقط</small>
         </div>
         <button onclick="window.location.href=window.location.pathname">أنشئ جدولي الخاص ✨</button>
     </div>
 
-    <div class="search-wrapper" id="mainSearchWrapper">
+    <div style="text-align: center; padding: 40px 15px 15px;">
         <div class="ee-logo-area" style="margin-bottom: 15px;">
             <i class="fa-solid fa-bolt-lightning" style="color: var(--primary); font-size: 40px; filter: drop-shadow(0 0 12px var(--primary));"></i>
         </div>
         
-        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 25px 0; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase;">
+        <div id="dynamicSemester" class="semester-badge" style="display: none;">جاري التحميل...</div>
+        <h2 id="dynamicMainTitle" style="margin: 0 0 8px; font-size: 22px; font-weight: 900; line-height: 1.3;">منصة الجداول</h2>
+        <p id="dynamicAlert" style="font-size: 13px; font-weight: 700; color: var(--warning); margin: 0 0 20px 0; display: none;"></p>
+        
+        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 20px 0; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase;">
             Electrical Engineering Club
         </p>
-
-        <a href="https://engineer-ee.com/examss" class="id-link-banner" id="idSearchLink">
-            <i class="fa-solid fa-id-card icon-main"></i>
-            <span>نزل الجدول الرسمي؟ ابحث برقمك الأكاديمي</span>
-            <i class="fa-solid fa-arrow-left icon-arrow"></i>
-        </a>
-        
-        <div id="countdown" class="countdown-bar"></div>
-        
-        <div class="input-group">
-            <input id="searchInput" type="text" placeholder="ابحث برمز المادة (EE201)..." autocomplete="off">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i> 
-        </div>
     </div>
 
-    <div id="myScheduleSection" style="display:none; margin-bottom: 30px;">
-        <div class="section-title" id="personalScheduleTitle" style="justify-content: space-between;">
-            <div>
-                <i class="fa-solid fa-star-half-stroke" style="color:#ffd166"></i> 
-                جدولك الشخصي
+    <div class="tabs-container" id="tabsMenu">
+        <button class="tab-btn active" onclick="switchTab('manualSearch')">
+            <i class="fa-solid fa-hand-pointer"></i> بناء الجدول يدوياً
+        </button>
+        <button class="tab-btn" id="idTabBtn" onclick="switchTab('idSearch')">
+            <i class="fa-solid fa-id-card"></i> بالرقم الأكاديمي
+        </button>
+    </div>
+
+    <div id="manualSearchMode" class="tab-content active">
+        <div class="search-wrapper">
+            <div id="countdown" class="countdown-bar"></div>
+            <div class="input-group">
+                <input id="searchInput" type="text" placeholder="ابحث برمز المادة (EE201)..." autocomplete="off">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i> 
             </div>
-            <button onclick="shareSchedule()" class="btn-action" style="width: auto; padding: 0 12px; font-size: 11px; font-weight: 800; background: rgba(31, 196, 124, 0.15); color: var(--accent);">
-                <i class="fa-solid fa-link" style="margin-left: 6px;"></i> شارك جدولك
-            </button>
         </div>
-        <div class="table-header">
-            <div>المادة</div>
-            <div>التاريخ</div>
-            <div>الوقت</div>
-            <div>المدة</div>
-            <div>حذف</div>
+
+        <div id="myScheduleSection" style="display:none; margin-bottom: 30px;">
+            <div class="section-title" id="personalScheduleTitle" style="justify-content: space-between;">
+                <div>
+                    <i class="fa-solid fa-star-half-stroke" style="color:#ffd166"></i> 
+                    جدولك الشخصي
+                </div>
+                <button onclick="shareSchedule()" class="btn-action" style="width: auto; padding: 0 12px; font-size: 11px; font-weight: 800; background: rgba(31, 196, 124, 0.15); color: var(--accent);">
+                    <i class="fa-solid fa-link" style="margin-left: 6px;"></i> شارك جدولك
+                </button>
+            </div>
+            <div class="table-header">
+                <div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div><div>حذف</div>
+            </div>
+            <div id="myRows"></div>
         </div>
-        <div id="myRows"></div>
+
+        <div class="section-title" id="resultsTitle">
+            <i class="fa-solid fa-list-check"></i> نتائج البحث
+        </div>
+        <div id="searchHeader" class="table-header" style="display:none;">
+            <div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div><div id="saveColumnHeader">حفظ</div>
+        </div>
+        
+        <div id="searchRows">
+            <div class="empty-state">
+                <i class="fa-solid fa-keyboard"></i>
+                <p>ابدأ البحث الآن عن اختبارك</p>
+            </div>
+        </div>
     </div>
 
-    <div class="section-title" id="resultsTitle">
-        <i class="fa-solid fa-list-check"></i> نتائج البحث
-    </div>
-    <div id="searchHeader" class="table-header" style="display:none;">
-        <div>المادة</div>
-        <div>التاريخ</div>
-        <div>الوقت</div>
-        <div>المدة</div>
-        <div id="saveColumnHeader">حفظ</div>
-    </div>
-    
-    <div id="searchRows">
-        <div class="empty-state">
-            <i class="fa-solid fa-keyboard"></i>
-            <p>ابدأ البحث الآن عن اختبارك</p>
+    <div id="idSearchMode" class="tab-content" style="padding: 20px 0;">
+        <div class="id-search-area">
+            <input id="studentIdInput" type="text" inputmode="numeric" placeholder="أدخل الرقم الجامعي..." autocomplete="off">
+            <button onclick="doIdSearch()"><i class="fa-solid fa-magnifying-glass"></i> بحث</button>
+        </div>
+
+        <div class="id-grid">
+            <div class="table-header" id="idTableHeader" style="display:none;">
+                <div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div><div>القاعة</div>
+            </div>
+            <div id="idResultsArea">
+                <div class="empty-state">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <p style="margin:0; font-weight:800; color: var(--text-dim); opacity: 0.6;">أدخل رقمك الأكاديمي لجلب جدولك فوراً</p>
+                </div>
+            </div>
         </div>
     </div>
+
 </main>
 
 <div id="toastMessage" class="toast"></div>
@@ -374,51 +358,29 @@
     let countdownTimer;
     let isSharedView = false;
 
-    // --- تحديث بيانات الـ LocalStorage القديمة بإضافة ID ---
-    myExams = myExams.map(ex => {
-        if (!ex.id) { ex.id = generateExamId(ex); }
-        return ex;
-    });
-    localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
+    // --- وظائف النافذة الذكية والتبويبات ---
+    function closePopup() {
+        document.getElementById('takeoverPopup').style.display = 'none';
+        sessionStorage.setItem('idPopupClosed', 'true');
+    }
 
-    // --- دالة تأثير الطيران الذكية (إضافة أو حذف) ---
-    function animateFly(startElement, isDelete = false) {
-        if (!startElement) return;
+    function switchToIdMode() {
+        closePopup();
+        switchTab('idSearch');
+        setTimeout(() => document.getElementById('studentIdInput').focus(), 300);
+    }
 
-        const startRect = startElement.getBoundingClientRect();
-        const flyItem = document.createElement('div');
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        // تغيير الأيقونة واللون حسب نوع العملية
-        if (isDelete) {
-            flyItem.className = 'fly-item delete';
-            flyItem.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        if (tabName === 'manualSearch') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('manualSearchMode').classList.add('active');
         } else {
-            flyItem.className = 'fly-item';
-            flyItem.innerHTML = '<i class="fa-solid fa-bolt-lightning"></i>';
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('idSearchMode').classList.add('active');
         }
-        
-        flyItem.style.left = startRect.left + 'px';
-        flyItem.style.top = startRect.top + 'px';
-        document.body.appendChild(flyItem);
-
-        requestAnimationFrame(() => {
-            if (isDelete) {
-                // تأثير الحذف: تسقط الأيقونة للأسفل وتختفي
-                flyItem.style.transform = 'translateY(80px) scale(0.6) rotate(30deg)';
-                flyItem.style.opacity = '0';
-            } else {
-                // تأثير الإضافة: تطير نحو قسم "جدولك الشخصي"
-                const targetElement = document.getElementById('personalScheduleTitle') || document.getElementById('myScheduleSection');
-                const targetRect = targetElement.getBoundingClientRect();
-                flyItem.style.left = (targetRect.left + targetRect.width / 2) + 'px';
-                flyItem.style.top = targetRect.top + 'px';
-                flyItem.style.transform = 'scale(1.2) rotate(360deg)';
-                flyItem.style.opacity = '0';
-            }
-        });
-
-        // مسح العنصر بعد انتهاء التأثير
-        setTimeout(() => flyItem.remove(), 700);
     }
 
     function showToast(message, type = 'success') {
@@ -434,7 +396,7 @@
         }
         
         toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000); 
+        setTimeout(() => { toast.classList.remove('show'); }, 3000); 
     }
 
     function highlightText(text, query) {
@@ -449,6 +411,31 @@
         return `${ex.code.trim()}_${ex.date.trim()}_${ex.time.trim()}`;
     }
 
+    // --- تأثير الطيران ---
+    function animateFly(startElement, isDelete = false) {
+        if (!startElement) return;
+        const startRect = startElement.getBoundingClientRect();
+        const flyItem = document.createElement('div');
+        
+        if (isDelete) { flyItem.className = 'fly-item delete'; flyItem.innerHTML = '<i class="fa-solid fa-trash-can"></i>'; } 
+        else { flyItem.className = 'fly-item'; flyItem.innerHTML = '<i class="fa-solid fa-bolt-lightning"></i>'; }
+        
+        flyItem.style.left = startRect.left + 'px'; flyItem.style.top = startRect.top + 'px';
+        document.body.appendChild(flyItem);
+
+        requestAnimationFrame(() => {
+            if (isDelete) {
+                flyItem.style.transform = 'translateY(80px) scale(0.6) rotate(30deg)'; flyItem.style.opacity = '0';
+            } else {
+                const targetElement = document.getElementById('personalScheduleTitle') || document.getElementById('myScheduleSection');
+                const targetRect = targetElement.getBoundingClientRect();
+                flyItem.style.left = (targetRect.left + targetRect.width / 2) + 'px'; flyItem.style.top = targetRect.top + 'px';
+                flyItem.style.transform = 'scale(1.2) rotate(360deg)'; flyItem.style.opacity = '0';
+            }
+        });
+        setTimeout(() => flyItem.remove(), 700);
+    }
+
     async function loadData() {
         const searchRows = document.getElementById('searchRows');
         const API_URL = 'https://examdata.mohammed-rasasi.workers.dev/?campus=main';
@@ -461,18 +448,64 @@
             }
 
             const response = await fetch(API_URL);
-            if (!response.ok) throw new Error('تعذر جلب البيانات');
+            if (!response.ok) throw new Error('تعذر جلب البيانات من السيرفر');
 
             const data = await response.json();
             
+            // 🌟 حقن بيانات הـ Config في العناوين بوضوح 🌟
+            if (data.config) {
+                // 1. عرض الفصل الدراسي (Semester)
+                const semesterEl = document.getElementById('dynamicSemester');
+                if (data.config.semester) {
+                    semesterEl.innerText = data.config.semester;
+                    semesterEl.style.display = 'inline-block';
+                }
+
+                // 2. دمج العنوان والمرحلة (Phase + Exam Type)
+                const phaseTitle = data.config.phase_title || "";
+                const examType = data.config.exam_type || "";
+                const mainTitleText = (phaseTitle && examType) ? `${phaseTitle} - ${examType}` : (phaseTitle || examType || "منصة الجداول");
+                document.getElementById('dynamicMainTitle').innerText = mainTitleText;
+
+                // 3. عرض رسالة التنبيه (Alert Message)
+                const alertEl = document.getElementById('dynamicAlert');
+                if (data.config.alert_message) {
+                    alertEl.innerText = data.config.alert_message;
+                    alertEl.style.display = 'block';
+                    // تغيير لون التنبيه بناءً على حالة الجدول
+                    if (data.config.is_id_search_active) {
+                        alertEl.style.color = 'var(--accent)'; // أخضر إذا كان رسمي
+                    } else {
+                        alertEl.style.color = 'var(--warning)'; // برتقالي إذا كان مبدئي
+                    }
+                }
+
+                // إدارة البوب أب والتبويبات من الإعدادات
+               if (data.config.is_id_search_active && !sessionStorage.getItem('idPopupClosed') && !new URLSearchParams(window.location.search).get('shared')) {
+                    document.getElementById('takeoverPopup').style.display = 'flex';
+                }
+                
+                if (!data.config.is_id_search_active) {
+                    const idTabBtn = document.getElementById('idTabBtn');
+                    
+                    // نخلي شكله خافت شوي ونجنبه القفل
+                    idTabBtn.style.opacity = '0.5';
+                    idTabBtn.innerHTML = '<i class="fa-solid fa-lock"></i> بالرقم الأكاديمي';
+                    
+                    // نلغي وظيفة فتح التبويب ونخليها تطلع إشعار التلميح للطالب
+                    idTabBtn.onclick = function() {
+                        showToast('⏳ تفتح هذه الخاصية فور اعتماد الكلية للجدول الرسمي!', 'warning');
+                    };
+                }
+            }
+
             if (data.exams_list) {
                 allExams = data.exams_list.map(ex => {
                     const code = ex.code.trim();
                     const course_name = ex.course_name.trim();
                     return {
                         ...ex,
-                        code,
-                        course_name,
+                        code, course_name,
                         id: generateExamId(ex),
                         searchKey: (code + " " + course_name).toLowerCase().replace(/\s+/g, '')
                     };
@@ -484,6 +517,7 @@
 
                 localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
                 renderMySchedule();
+                
                 checkSharedSchedule();
             }
         } catch (error) {
@@ -500,6 +534,7 @@
         
         const dateParts = ex.date.split(' ');
         const dateNum = dateParts[0] || '';
+        
         const testDate = dayjs(dateNum, 'DD-MM-YYYY');
         const fullDayName = testDate.isValid() ? testDate.format('dddd') : ''; 
         
@@ -517,9 +552,11 @@
         const isPM = ex.time.toUpperCase().includes('PM');
         const timeColor = isPM ? '#ff9f43' : '#00d2d3';
 
+        // تنبيه التعارض
+        const sameDayCount = myExams.filter(e => e.date.split(' ')[0] === dateNum).length;
         let conflictWarning = '';
+        
         if (!isReadOnly) {
-            const sameDayCount = myExams.filter(e => e.date.split(' ')[0] === dateNum).length;
             if (isSaved && sameDayCount > 1) {
                 conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>اختبار بنفس اليوم</span>`;
             } else if (!isSaved && sameDayCount >= 1) {
@@ -529,17 +566,8 @@
 
         const highlightedCode = highlightText(ex.code, searchQuery);
         const highlightedName = highlightText(ex.course_name, searchQuery);
-
-        let actionsHTML = '';
-        if (!isReadOnly) {
-            actionsHTML = `
-                <div class="exam-actions">
-                    <button class="btn-action btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave('${ex.id}', this)">
-                        <i class="fa-solid ${isSaved ? 'fa-xmark' : 'fa-plus'}"></i>
-                    </button>
-                </div>
-            `;
-        }
+        
+        let actionsHTML = !isReadOnly ? `<div class="exam-actions"><button class="btn-action btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave('${ex.id}', this)"><i class="fa-solid ${isSaved ? 'fa-xmark' : 'fa-plus'}"></i></button></div>` : '';
 
         row.innerHTML = `
             <div class="exam-info">
@@ -547,7 +575,6 @@
                 <span class="sub">${highlightedName}</span>
                 ${conflictWarning}
             </div>
-
             <div class="exam-date">
                 <div class="exam-date-text">
                     <b>${dateNum}</b>
@@ -555,27 +582,23 @@
                 </div>
                 <div class="exam-date-line" style="background: ${statusColor};"></div>
             </div>
-
             <div class="exam-time">
                 <div class="exam-time-inner">
                     <div class="exam-time-start" style="color: ${timeColor};">${startTime}</div>
                     ${endTime ? `<div class="exam-time-end">${endTime}</div>` : ''}
                 </div>
             </div>
-
             <div class="exam-duration">
                 <span>${ex.duration.replace(' H ', 'س ').replace(' M', 'د')}</span>
                 <span>${ex.actual_size} ط</span>
             </div>
-
             ${actionsHTML}
         `;
         return row;
     }
         
     function renderMySchedule() {
-        if (isSharedView) return; 
-
+        if (isSharedView) return;
         const container = document.getElementById('myRows');
         const section = document.getElementById('myScheduleSection');
         
@@ -600,10 +623,8 @@
         const nextExam = myExams.find(ex => {
             const dateStr = ex.date.split(' ')[0];
             const timeStr = ex.time.split(/[-–—]/)[0].trim();
-            
             let exactTime = dayjs(`${dateStr} ${timeStr}`, ['DD-MM-YYYY hh:mm A', 'DD-MM-YYYY h:mm A', 'DD-MM-YYYY HH:mm', 'DD-MM-YYYY']);
             if (!exactTime.isValid()) exactTime = dayjs(dateStr, 'DD-MM-YYYY').endOf('day');
-
             return exactTime.isAfter(now);
         });
         
@@ -611,8 +632,7 @@
     }
 
     function doSearch() {
-        if (isSharedView) return; 
-
+        if (isSharedView) return;
         const rawQuery = document.getElementById('searchInput').value;
         const cleanQuery = rawQuery.toLowerCase().replace(/\s+/g, '');
         const container = document.getElementById('searchRows');
@@ -629,7 +649,6 @@
         }
 
         const filtered = allExams.filter(e => e.searchKey.includes(cleanQuery));
-
         container.innerHTML = '';
 
         if (filtered.length > 0) {
@@ -653,17 +672,14 @@
     }
 
     function toggleSave(id, btnElement) {
-        if (isSharedView) return; 
-
+        if (isSharedView) return;
         const index = myExams.findIndex(e => e.id === id);
         
         if (index > -1) {
-            // حالة الحذف
             myExams.splice(index, 1);
             showToast("🗑️ تم حذف المادة من جدولك", 'danger'); 
-            animateFly(btnElement, true); // استدعاء الحركة بنمط الحذف
+            animateFly(btnElement, true);
         } else {
-            // حالة الإضافة
             const exam = allExams.find(e => e.id === id);
             if (exam) {
                 const dateNum = exam.date.split(' ')[0];
@@ -676,7 +692,7 @@
                 } else {
                     showToast("✅ تمت إضافة المادة بنجاح!", 'success'); 
                 }
-                animateFly(btnElement, false); // استدعاء الحركة بنمط الإضافة
+                animateFly(btnElement, false);
             }
         }
 
@@ -688,39 +704,30 @@
 
         localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
         
-        setTimeout(() => {
-            renderMySchedule();
-            doSearch();
-        }, 150);
+        setTimeout(() => { renderMySchedule(); doSearch(); }, 150);
     }
 
     function updateCountdown(nextExam) {
-        if (isSharedView) return; 
-
+        if (isSharedView) return;
         const el = document.getElementById('countdown');
         clearInterval(countdownTimer);
         
         if (!nextExam) {
-            if (myExams.length === 0) {
-                el.style.display = 'none';
-            } else {
+            if (myExams.length === 0) { el.style.display = 'none'; } 
+            else {
                 el.innerText = `✅ انتهت جميع اختباراتك المضافة.. مبروك!`;
-                el.style.background = 'var(--accent)';
-                el.style.display = 'block';
+                el.style.background = 'var(--accent)'; el.style.display = 'block';
             }
             return;
         }
 
-        el.style.display = 'block';
-        el.style.background = ''; 
+        el.style.display = 'block'; el.style.background = ''; 
 
         const dateStr = nextExam.date.split(' ')[0];
         const timeStr = nextExam.time.split(/[-–—]/)[0].trim();
         
         let exactTime = dayjs(`${dateStr} ${timeStr}`, ['DD-MM-YYYY hh:mm A', 'DD-MM-YYYY h:mm A', 'DD-MM-YYYY HH:mm', 'DD-MM-YYYY']);
-        if (!exactTime.isValid()) {
-             exactTime = dayjs(dateStr, 'DD-MM-YYYY').startOf('day');
-        }
+        if (!exactTime.isValid()) { exactTime = dayjs(dateStr, 'DD-MM-YYYY').startOf('day'); }
 
         function tick() {
             const now = dayjs();
@@ -730,8 +737,7 @@
 
             if (exactTime.isBefore(now)) {
                 el.innerHTML = `⏳ اختبار <span style="color:#8042ff">${nextExam.code}</span> بدأ أو أوشك على البدء! بالتوفيق`;
-                clearInterval(countdownTimer);
-                return;
+                clearInterval(countdownTimer); return;
             }
 
             if (diffDays > 0) {
@@ -746,18 +752,13 @@
     }
 
     function shareSchedule() {
-        if (myExams.length === 0) {
-            showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning");
-            return;
-        }
-        
+        if (myExams.length === 0) { showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning"); return; }
         const codes = myExams.map(ex => ex.code.trim()).join(',');
-        const encodedCodes = btoa(codes); 
         const baseUrl = window.location.origin + window.location.pathname;
-        const shareUrl = `${baseUrl}?s=${encodedCodes}`;
+        const shareUrl = `${baseUrl}?shared=${codes}`;
         
         navigator.clipboard.writeText(shareUrl).then(() => {
-            showToast("🔗 تم نسخ الرابط! أرسله لزملائك للاستعراض", "success");
+            showToast("🔗 تم نسخ الرابط! شاركه مع زملائك", "success");
         }).catch(err => {
             showToast("❌ حدث خطأ أثناء النسخ", "danger");
         });
@@ -765,52 +766,123 @@
 
     function checkSharedSchedule() {
         const urlParams = new URLSearchParams(window.location.search);
-        const sharedEncoded = urlParams.get('s');
+        const sharedCodes = urlParams.get('shared');
         
-        let codesStr = "";
-        
-        if (sharedEncoded) {
-            try { codesStr = atob(sharedEncoded); } catch (e) { console.error("رابط غير صالح"); }
-        }
-
-        if (codesStr) {
-            const codesArray = codesStr.split(',').map(c => c.toLowerCase().trim());
-            const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
-            
-            if (sharedExams.length > 0) {
-                isSharedView = true; 
-                document.body.classList.add('read-only-view'); 
-
-                document.getElementById('shareBanner').style.display = 'flex';
-                // إخفاء الـ Wrapper الأساسي اللي يحتوي على حقل البحث وزر الآي دي
-                document.getElementById('mainSearchWrapper').style.display = 'none';
-                document.getElementById('myScheduleSection').style.display = 'none';
-                document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-user-group"></i> الجدول المُشارك من صديقك';
+        if (sharedCodes) {
+            const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
+            setTimeout(() => {
+                const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
                 
-                const container = document.getElementById('searchRows');
-                const header = document.getElementById('searchHeader');
-                
-                header.innerHTML = '<div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div>';
-                header.style.display = 'grid';
-                container.innerHTML = '';
-                
-                sharedExams.forEach(ex => {
-                    container.appendChild(createRow(ex, false, '', true));
-                });
-                
-                setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 100);
-            } else {
-                showToast("⚠️ الرابط غير صالح أو لا يحتوي على مواد", "warning");
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+                if (sharedExams.length > 0) {
+                    isSharedView = true; document.body.classList.add('read-only-view');
+                    document.getElementById('tabsMenu').style.display = 'none';
+                    switchTab('manualSearch');
+                    document.getElementById('shareBanner').style.display = 'flex';
+                    document.querySelector('.search-wrapper').style.display = 'none';
+                    document.getElementById('myScheduleSection').style.display = 'none';
+                    document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-user-group"></i> الجدول المشارك من زميلك';
+                    
+                    const container = document.getElementById('searchRows');
+                    const header = document.getElementById('searchHeader');
+                    
+                    container.innerHTML = `
+                        <div style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin-bottom:15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
+                            👀 أنت تشوف جدول خويك حاليا!
+                        </div>`;
+                    
+                    header.style.display = 'grid';
+                    sharedExams.forEach(ex => container.appendChild(createRow(ex, false, '', true)));
+                    
+                    setTimeout(() => document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+                }
+            }, 500);
         }
     }
+
+    // --- منطق بحث الرقم الأكاديمي ---
+    const ID_API_BASE = "https://eec.mohammed-rasasi.workers.dev";
+    
+    function convertArabicToEnglishNumbers(str) {
+        const arabic = '٠١٢٣٤٥٦٧٨٩'; const english = '0123456789';
+        return String(str || '').split('').map(ch => {
+            const i = arabic.indexOf(ch); return i !== -1 ? english[i] : ch;
+        }).join('');
+    }
+
+    function parseTxtDate(dateStr) {
+        const m = String(dateStr || '').match(/(\d{2})-(\d{2})-(\d{4})\s*\((\w+)\)/);
+        if (!m) return null; return { dd: m[1], mm: m[2], yyyy: m[3] };
+    }
+
+    function formatDurationID(raw) {
+        if (!raw) return "";
+        const h = raw.match(/(\d+)\s*H/i); const m = raw.match(/(\d+)\s*M/i);
+        const hours = h ? Number(h[1]) : 0; const minutes = m ? Number(m[1]) : 0;
+        let res = [];
+        if (hours) res.push(`${hours}س`); if (minutes) res.push(`${minutes}د`);
+        return res.join(' ') || raw;
+    }
+
+    async function doIdSearch() {
+        const inputEl = document.getElementById('studentIdInput');
+        const cleaned = convertArabicToEnglishNumbers(inputEl.value).trim().replace(/\D/g, '');
+        const idNum = Number(cleaned);
+        const resultsArea = document.getElementById('idResultsArea');
+        const tableHeader = document.getElementById('idTableHeader');
+
+        if (!idNum) { showToast('الرجاء إدخال رقم أكاديمي صحيح', 'warning'); return; }
+
+        resultsArea.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>جاري سحب الجدول...</p></div>';
+        tableHeader.style.display = 'none';
+
+        try {
+            const url = `${ID_API_BASE}/exams?studentId=${encodeURIComponent(idNum)}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            const text = await res.text();
+            
+            if (!res.ok) throw new Error(text);
+            const data = JSON.parse(text);
+            const records = data.records || [];
+
+            if (records.length === 0) {
+                resultsArea.innerHTML = '<div class="empty-state"><p>لا يوجد جدول متاح لهذا الرقم.</p></div>'; return;
+            }
+
+            tableHeader.style.display = 'grid'; resultsArea.innerHTML = '';
+
+            records.forEach(r => {
+                const row = document.createElement('div'); row.className = 'row';
+                const d = parseTxtDate(r.dateStr);
+                const dateNum = d ? `${d.dd}-${d.mm}-${d.yyyy}` : r.dateStr.split(' ')[0];
+                const dayAr = d ? dayjs(`${d.yyyy}-${d.mm}-${d.dd}`).format('dddd') : '';
+                const timeParts = String(r.timeStr).split("-").map(p => p.trim());
+                const t1 = timeParts[0] || ""; const t2 = timeParts[1] || "";
+                const duration = formatDurationID(r.duration);
+
+                row.innerHTML = `
+                    <div class="exam-info"><span class="label">${r.courseCode}</span></div>
+                    <div class="exam-date">
+                        <div class="exam-date-text"><b>${dateNum}</b><small style="color:var(--accent);">${dayAr}</small></div>
+                        <div class="exam-date-line" style="background:var(--accent);"></div>
+                    </div>
+                    <div class="exam-time"><div class="exam-time-inner"><div class="exam-time-start">${t1}</div><div class="exam-time-end">${t2}</div></div></div>
+                    <div class="exam-duration"><span style="font-size:12px">${duration}</span></div>
+                    <div class="exam-venue">${r.venue || '-'}</div>
+                `;
+                resultsArea.appendChild(row);
+            });
+            showToast('تم جلب الجدول بنجاح!', 'success');
+        } catch (err) {
+            resultsArea.innerHTML = '<div class="empty-state" style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i><p>حدث خطأ أثناء جلب البيانات</p></div>';
+        }
+    }
+
+    document.getElementById('studentIdInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') doIdSearch(); });
 
     document.getElementById('searchInput').addEventListener('input', () => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => { doSearch(); }, 150); 
     });
-
 </script>
 </body>
 </html>
