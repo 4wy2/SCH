@@ -773,84 +773,68 @@
     const legacyCodes = urlParams.get('shared'); 
     
     let sharedCodes = '';
-    
-    // 1. استخراج الأكواد مع معالجة الخطأ
-    try {
-        if (encodedCodes) {
-            sharedCodes = atob(encodedCodes);
-        } else if (legacyCodes) {
-            sharedCodes = legacyCodes;
-        }
-    } catch(e) {
-        console.error("خطأ في فك تشفير الرابط:", e);
-        return;
+    if (encodedCodes) {
+        try { sharedCodes = atob(encodedCodes); } catch(e) { console.error("رابط غير صالح"); return; }
+    } else if (legacyCodes) {
+        sharedCodes = legacyCodes;
     }
 
-    if (!sharedCodes) return;
-
-    // 2. تحويل النصوص لمصفوفة نظيفة
-    const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
-
-    // 3. دالة المعالجة الفعلية (منفصلة لضمان توفر البيانات)
-    const displaySharedContent = () => {
-        if (typeof allExams === 'undefined' || allExams.length === 0) return;
-
-        const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
+    if (sharedCodes) {
+        const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
         
-        if (sharedExams.length > 0) {
-            isSharedView = true;
-            document.body.classList.add('read-only-view');
+        setTimeout(() => {
+            const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
-            // إخفاء العناصر غير الضرورية
-            const elementsToHide = ['tabsMenu', 'myScheduleSection', 'shareBanner', 'resultsTitle'];
-            elementsToHide.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
-            });
-            
-            const searchWrapper = document.querySelector('.search-wrapper');
-            if (searchWrapper) searchWrapper.style.display = 'none';
-
-            const container = document.getElementById('searchRows');
-            const header = document.getElementById('searchHeader');
-
-            // 4. بناء الـ Hero Card باستخدام Template مريح للعين
-            container.innerHTML = `
-                <div class="shared-hero-card" style="background: linear-gradient(135deg, rgba(128,66,255,0.18), rgba(31,196,124,0.18)); border: 1px solid var(--primary); border-radius: 20px; padding: 35px 25px; text-align: center; margin: 10px 15px 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); animation: fadeIn 0.6s ease-out;">
-                    <div style="font-size: 50px; margin-bottom: 15px; filter: drop-shadow(0 0 12px rgba(128,66,255,0.5));">✨</div>
-                    <h2 style="margin: 0 0 12px; color: #fff; font-weight: 900; font-size: 22px; letter-spacing: -0.5px;">جدول تمت مشاركته</h2>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; margin: 0 0 25px; line-height: 1.6; max-width: 400px; margin-inline: auto;">أنت الآن تستعرض جدول زميلك. يمكنك حفظه في حسابك أو البدء بإنشاء جدولك الخاص.</p>
+            if (sharedExams.length > 0) {
+                isSharedView = true; 
+                document.body.classList.add('read-only-view');
+                
+                // 1. إخفاء واجهة البحث بالكامل لأننا بنعرض جدول جاهز
+                const elementsToHide = ['.search-wrapper', '#resultsTitle', '#searchHeader', '#searchRows', '#shareBanner'];
+                elementsToHide.forEach(selector => {
+                    const el = document.querySelector(selector);
+                    if (el) el.style.display = 'none';
+                });
+                
+                // 2. استهداف قسم الجدول الأساسي لإظهاره
+                const myScheduleSection = document.getElementById('myScheduleSection');
+                if (myScheduleSection) {
+                    myScheduleSection.style.display = 'block';
                     
-                    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 14px; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(128,66,255,0.3); flex: 1; min-width: 160px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="fa-solid fa-copy"></i> إضافة لجدولي
+                    // استهداف حاوية الصفوف داخل الجدول الأساسي (أو القسم نفسه إذا لم تكن موجودة)
+                    const container = document.getElementById('myScheduleRows') || myScheduleSection;
+                    container.innerHTML = ''; // تفريغ أي محتوى سابق
+                    
+                    // 3. إضافة هيدر بسيط جداً ومدمج مع التصميم يعرض زر للحفظ فقط
+                    const headerRow = document.createElement('div');
+                    headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);";
+                    headerRow.innerHTML = `
+                        <h2 style="margin: 0; font-size: 1.2rem;">الجدول المشترك</h2>
+                        <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                            حفظ كجدولي
                         </button>
-                        <button onclick="window.location.href=window.location.pathname" style="background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 14px 24px; border-radius: 14px; font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.3s; flex: 1; min-width: 160px;">
-                            <i class="fa-solid fa-plus"></i> إنشاء جدولي
-                        </button>
-                    </div>
-                </div>`;
-            
-            if (header) header.style.display = 'grid';
-            
-            // إضافة الصفوف
-            sharedExams.forEach(ex => {
-                container.appendChild(createRow(ex, false, '', true));
-            });
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
-    // تشغيل الدالة مع التأكد من وجود البيانات
-    if (typeof allExams !== 'undefined' && allExams.length > 0) {
-        displaySharedContent();
-    } else {
-        // إذا لم تكن البيانات جاهزة، ننتظر قليلاً أو نستخدم Event Listener إذا كان تطبيقك يدعم ذلك
-        setTimeout(displaySharedContent, 600);
+                    `;
+                    container.appendChild(headerRow);
+                    
+                    // 4. بناء الصفوف بنفس تصميم الجدول الأساسي تماماً
+                    sharedExams.forEach(ex => {
+                        // استخدام createRow بنفس الطريقة اللي تبني فيها الجدول الأساسي
+                        const row = createRow(ex, true, '', false);
+                        
+                        // إزالة زر الحذف برمجياً حتى لا يحاول المستخدم التعديل قبل الحفظ
+                        const deleteBtn = row.querySelector('.delete-btn');
+                        if (deleteBtn) deleteBtn.remove();
+                        
+                        container.appendChild(row);
+                    });
+                    
+                    // تمرير الشاشة للجدول
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        }, 500);
     }
 }
-
     // --- منطق بحث الرقم الأكاديمي ---
     const ID_API_BASE = "https://eec.mohammed-rasasi.workers.dev";
     
