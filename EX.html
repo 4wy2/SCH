@@ -782,6 +782,7 @@
     if (sharedCodes) {
         const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
         
+        // ننتظر قليلاً للتأكد من تحميل allExams
         setTimeout(() => {
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
@@ -789,50 +790,78 @@
                 isSharedView = true; 
                 document.body.classList.add('read-only-view');
                 
-                // 1. إخفاء واجهة البحث بالكامل لأننا بنعرض جدول جاهز
-                const elementsToHide = ['.search-wrapper', '#resultsTitle', '#searchHeader', '#searchRows', '#shareBanner'];
+                // إخفاء عناصر البحث والتبويبات تماماً
+                const elementsToHide = ['.search-wrapper', '#resultsTitle', '#searchHeader', '#searchRows', '#tabsMenu'];
                 elementsToHide.forEach(selector => {
                     const el = document.querySelector(selector);
                     if (el) el.style.display = 'none';
                 });
                 
-                // 2. استهداف قسم الجدول الأساسي لإظهاره
+                // إظهار قسم الجدول
                 const myScheduleSection = document.getElementById('myScheduleSection');
-                if (myScheduleSection) {
+                const container = document.getElementById('myRows'); // التأكد من استخدام myRows
+                
+                if (myScheduleSection && container) {
                     myScheduleSection.style.display = 'block';
-                    
-                    // استهداف حاوية الصفوف داخل الجدول الأساسي (أو القسم نفسه إذا لم تكن موجودة)
-                    const container = document.getElementById('myScheduleRows') || myScheduleSection;
-                    container.innerHTML = ''; // تفريغ أي محتوى سابق
-                    
-                    // 3. إضافة هيدر بسيط جداً ومدمج مع التصميم يعرض زر للحفظ فقط
+                    container.innerHTML = ''; 
+
+                    // إضافة هيدر بسيط وأنيق يوضح أنه جدول مستعرض
                     const headerRow = document.createElement('div');
-                    headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);";
+                    headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin: 10px 15px 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); animation: fadeIn 0.5s;";
                     headerRow.innerHTML = `
-                        <h2 style="margin: 0; font-size: 1.2rem;">الجدول المشترك</h2>
-                        <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                            حفظ كجدولي
-                        </button>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                             <i class="fa-solid fa-eye" style="color:var(--primary)"></i>
+                             <h2 style="margin:0; font-size:16px; font-weight:800;">استعراض جدول مشترك</h2>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; font-size:11px; font-weight:800; cursor:pointer;">
+                                <i class="fa-solid fa-download"></i> حفظ بجدولي
+                            </button>
+                            <button onclick="window.location.href=window.location.pathname" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--border-color); padding:8px 15px; border-radius:10px; font-size:11px; font-weight:800; cursor:pointer;">
+                                إغلاق
+                            </button>
+                        </div>
                     `;
                     container.appendChild(headerRow);
                     
-                    // 4. بناء الصفوف بنفس تصميم الجدول الأساسي تماماً
+                    // بناء الصفوف
                     sharedExams.forEach(ex => {
-                        // استخدام createRow بنفس الطريقة اللي تبني فيها الجدول الأساسي
-                        const row = createRow(ex, true, '', false);
-                        
-                        // إزالة زر الحذف برمجياً حتى لا يحاول المستخدم التعديل قبل الحفظ
-                        const deleteBtn = row.querySelector('.delete-btn');
-                        if (deleteBtn) deleteBtn.remove();
-                        
+                        const row = createRow(ex, true, '', true); // true الأخيرة تعني ReadOnly
                         container.appendChild(row);
                     });
                     
-                    // تمرير الشاشة للجدول
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }
         }, 500);
+    }
+}
+function copySharedToMySchedule(rawSource) {
+    try {
+        let codes = '';
+        // محاولة فك التشفير إذا كان مشفراً
+        try {
+            codes = atob(rawSource);
+        } catch(e) {
+            codes = rawSource;
+        }
+
+        const codesArray = codes.split(',').map(c => c.toLowerCase().trim());
+        const importedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
+
+        if (importedExams.length > 0) {
+            // حفظ المواد في localStorage
+            myExams = importedExams;
+            localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
+            
+            // إظهار رسالة نجاح وإعادة تحميل الصفحة لوضع التعديل
+            showToast("✅ تم استيراد الجدول بنجاح!", "success");
+            setTimeout(() => {
+                window.location.href = window.location.pathname;
+            }, 1000);
+        }
+    } catch (err) {
+        showToast("❌ فشل استيراد الجدول", "danger");
     }
 }
     // --- منطق بحث الرقم الأكاديمي ---
