@@ -55,6 +55,24 @@
         box-shadow: 0 40px 80px rgba(0,0,0,0.7); 
     }
 
+    /* شريط تنبيه المشاركة */
+    #shareBanner {
+        display: none;
+        background: linear-gradient(135deg, rgba(128, 66, 255, 0.2), rgba(31, 196, 124, 0.2));
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px 25px;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 800;
+        font-size: 13px;
+        animation: slideDown 0.5s ease-out;
+    }
+    #shareBanner span { color: #fff; }
+    #shareBanner button {
+        background: white; color: var(--primary); border: none; padding: 8px 15px; border-radius: 10px; font-weight: 900; font-size: 11px; cursor: pointer; transition: 0.3s;
+    }
+    #shareBanner button:active { transform: scale(0.95); }
+
     .countdown-bar { 
         background: linear-gradient(135deg, rgba(128, 66, 255, 0.1), rgba(31, 196, 124, 0.1));
         border: 1px solid var(--border-color); padding: 15px 25px;
@@ -139,6 +157,9 @@
     /* 7. التنسيق النحيف للجوال */
     @media (max-width: 600px) {
         .app { width: 100%; margin: 0; border-radius: 0; border: none; }
+        
+        #shareBanner { flex-direction: column; gap: 10px; text-align: center; padding: 15px; }
+        
         .search-wrapper { padding: 30px 15px; }
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
@@ -207,6 +228,11 @@
     </div>
 
 <main class="app">
+    <div id="shareBanner">
+        <span>👀 أنت تستعرض جدول صديقك حالياً</span>
+        <button onclick="window.location.href=window.location.pathname">أنشئ جدولي الخاص ✨</button>
+    </div>
+
     <div class="search-wrapper">
         <div class="ee-logo-area" style="margin-bottom: 15px;">
             <i class="fa-solid fa-bolt-lightning" style="color: var(--primary); font-size: 40px; filter: drop-shadow(0 0 12px var(--primary));"></i>
@@ -244,7 +270,7 @@
         <div id="myRows"></div>
     </div>
 
-    <div class="section-title">
+    <div class="section-title" id="resultsTitle">
         <i class="fa-solid fa-list-check"></i> نتائج البحث
     </div>
     <div id="searchHeader" class="table-header" style="display:none;">
@@ -345,7 +371,7 @@
                 localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
                 renderMySchedule();
                 
-                // فحص الرابط بعد تحميل البيانات لضمان وجود المواد
+                // فحص الرابط بعد تحميل البيانات
                 checkSharedSchedule();
             }
         } catch (error) {
@@ -587,7 +613,7 @@
         countdownTimer = setInterval(tick, 60000); 
     }
 
-    // --- دالة مشاركة الجدول وإنشاء الرابط ---
+    // --- دالة مشاركة الجدول وتشفير الرابط ---
     function shareSchedule() {
         if (myExams.length === 0) {
             showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning");
@@ -595,8 +621,10 @@
         }
         
         const codes = myExams.map(ex => ex.code.trim()).join(',');
+        // تشفير رموز المواد لكي لا تظهر صريحة في الرابط
+        const encodedCodes = btoa(codes);
         const baseUrl = window.location.origin + window.location.pathname;
-        const shareUrl = `${baseUrl}?shared=${codes}`;
+        const shareUrl = `${baseUrl}?s=${encodedCodes}`;
         
         navigator.clipboard.writeText(shareUrl).then(() => {
             showToast("🔗 تم نسخ الرابط! شاركه مع زملائك", "success");
@@ -605,26 +633,38 @@
         });
     }
 
-    // --- دالة قراءة رابط المشاركة وعرض جدول الصديق ---
+    // --- دالة قراءة الرابط المشفر وعرض جدول الصديق ---
     function checkSharedSchedule() {
         const urlParams = new URLSearchParams(window.location.search);
-        const sharedCodes = urlParams.get('shared');
+        const sharedEncoded = urlParams.get('s');
         
-        if (sharedCodes) {
-            const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
+        let codesStr = "";
+        
+        if (sharedEncoded) {
+            try {
+                // فك التشفير
+                codesStr = atob(sharedEncoded);
+            } catch (e) {
+                console.error("رابط غير صالح");
+            }
+        }
+
+        if (codesStr) {
+            const codesArray = codesStr.split(',').map(c => c.toLowerCase().trim());
             
-            // تصفية المواد التي تطابق الرموز الموجودة في الرابط
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
             if (sharedExams.length > 0) {
+                // إظهار الشريط الترحيبي الخاص بجدول الصديق
+                document.getElementById('shareBanner').style.display = 'flex';
+                
+                // تعديل عنوان قسم النتائج
+                document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-user-group"></i> الجدول المُشارك من صديقك';
+                
                 const container = document.getElementById('searchRows');
                 const header = document.getElementById('searchHeader');
                 
-                container.innerHTML = `
-                    <div style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin-bottom:15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
-                        👀 أنت تشوف جدول خويك حاليا! تقدر تضيف المواد لجدولك من هنا 👇
-                    </div>`;
-                
+                container.innerHTML = '';
                 header.style.display = 'grid';
                 
                 sharedExams.forEach(ex => {
@@ -632,9 +672,9 @@
                     container.appendChild(createRow(ex, isSaved));
                 });
                 
-                // النزول التلقائي لقسم البحث حتى يرى الطالب جدول صديقه مباشرة
+                // التوجه التلقائي نحو الشريط الترحيبي
                 setTimeout(() => {
-                    document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    document.getElementById('shareBanner').scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 500);
             }
         }
