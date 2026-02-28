@@ -753,47 +753,74 @@
 
     function shareSchedule() {
         if (myExams.length === 0) { showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning"); return; }
-        const codes = myExams.map(ex => ex.code.trim()).join(',');
+        
+        // تشفير الرموز (Base64) وتغيير المتغير إلى s لتقصير الرابط
+        const rawCodes = myExams.map(ex => ex.code.trim()).join(',');
+        const encodedCodes = btoa(rawCodes); 
+        
         const baseUrl = window.location.origin + window.location.pathname;
-        const shareUrl = `${baseUrl}?shared=${codes}`;
+        const shareUrl = `${baseUrl}?s=${encodedCodes}`;
         
         navigator.clipboard.writeText(shareUrl).then(() => {
-            showToast("🔗 تم نسخ الرابط! شاركه مع زملائك", "success");
+            showToast("🔗 تم نسخ الرابط المشفر! شاركه مع زملائك", "success");
         }).catch(err => {
             showToast("❌ حدث خطأ أثناء النسخ", "danger");
         });
     }
-
     function checkSharedSchedule() {
         const urlParams = new URLSearchParams(window.location.search);
-        const sharedCodes = urlParams.get('shared');
+        // نقرأ من المتغير s المشفر أو shared القديم (عشان لو فيه روابط قديمة ما تخرب)
+        const encodedCodes = urlParams.get('s');
+        const legacyCodes = urlParams.get('shared'); 
         
+        let sharedCodes = '';
+        if (encodedCodes) {
+            try { sharedCodes = atob(encodedCodes); } catch(e) { console.error("رابط غير صالح"); return; }
+        } else if (legacyCodes) {
+            sharedCodes = legacyCodes;
+        }
+
         if (sharedCodes) {
             const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
+            
             setTimeout(() => {
                 const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
                 
                 if (sharedExams.length > 0) {
                     isSharedView = true; document.body.classList.add('read-only-view');
+                    
+                    // إخفاء الأقسام غير الضرورية بنظافة
                     document.getElementById('tabsMenu').style.display = 'none';
-                    switchTab('manualSearch');
-                    document.getElementById('shareBanner').style.display = 'flex';
                     document.querySelector('.search-wrapper').style.display = 'none';
                     document.getElementById('myScheduleSection').style.display = 'none';
-                    document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-user-group"></i> الجدول المشارك من زميلك';
+                    document.getElementById('shareBanner').style.display = 'none'; // أخفينا البانر العلوي لأنه مزعج
+                    document.getElementById('resultsTitle').style.display = 'none'; // أخفينا كلمة "نتائج البحث"
                     
                     const container = document.getElementById('searchRows');
                     const header = document.getElementById('searchHeader');
                     
+                    // 🌟 هنا الواجهة الجديدة والفخمة (Hero Card) 🌟
                     container.innerHTML = `
-                        <div style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin-bottom:15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
-                            👀 أنت تشوف جدول خويك حاليا!
+                        <div style="background: linear-gradient(135deg, rgba(128,66,255,0.15), rgba(31,196,124,0.15)); border: 1px solid var(--primary); border-radius: 20px; padding: 30px 20px; text-align: center; margin: 0 15px 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: fadeIn 0.5s;">
+                            <div style="font-size: 45px; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(128,66,255,0.4));">👀</div>
+                            <h2 style="margin: 0 0 10px; color: white; font-weight: 900; font-size: 20px;">جدول زميلك</h2>
+                            <p style="color: var(--text-dim); font-size: 13px; font-weight: 600; margin: 0 0 20px; line-height: 1.5;">أنت الآن تستعرض جدولاً تمت مشاركته معك. يمكنك نسخه لحسابك أو بناء جدولك الخاص.</p>
+                            
+                            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                                <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.3s; box-shadow: 0 5px 15px rgba(128,66,255,0.3); flex: 1; min-width: 140px;">
+                                    <i class="fa-solid fa-download"></i> انسخه لجدولي
+                                </button>
+                                <button onclick="window.location.href=window.location.pathname" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-color); padding: 12px 20px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.3s; flex: 1; min-width: 140px;">
+                                    <i class="fa-solid fa-plus"></i> جدول جديد
+                                </button>
+                            </div>
                         </div>`;
                     
                     header.style.display = 'grid';
                     sharedExams.forEach(ex => container.appendChild(createRow(ex, false, '', true)));
                     
-                    setTimeout(() => document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+                    // تمرير الشاشة للجدول بنعومة
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                 }
             }, 500);
         }
