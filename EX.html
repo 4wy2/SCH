@@ -55,7 +55,7 @@
         box-shadow: 0 40px 80px rgba(0,0,0,0.7); 
     }
 
-    /* شريط تنبيه المشاركة */
+    /* --- شريط تنبيه المشاركة الذكي --- */
     #shareBanner {
         display: none;
         background: linear-gradient(135deg, rgba(128, 66, 255, 0.2), rgba(31, 196, 124, 0.2));
@@ -63,13 +63,15 @@
         padding: 15px 25px;
         align-items: center;
         justify-content: space-between;
-        font-weight: 800;
-        font-size: 13px;
         animation: slideDown 0.5s ease-out;
     }
-    #shareBanner span { color: #fff; line-height: 1.5; }
+    .banner-text { display: flex; flex-direction: column; }
+    .banner-text span { color: #fff; font-weight: 900; font-size: 14px; }
+    .banner-text small { color: var(--accent); font-weight: 700; font-size: 10px; margin-top: 3px; }
+    
     #shareBanner button {
-        background: white; color: var(--primary); border: none; padding: 8px 15px; border-radius: 10px; font-weight: 900; font-size: 11px; cursor: pointer; transition: 0.3s;
+        background: white; color: var(--primary); border: none; padding: 10px 18px; border-radius: 12px; font-weight: 900; font-size: 12px; cursor: pointer; transition: 0.3s;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     #shareBanner button:active { transform: scale(0.95); }
 
@@ -118,9 +120,9 @@
     }
     .row:hover { background: rgba(255,255,255,0.06); transform: translateY(-3px); border-color: rgba(255,255,255,0.15); }
 
-    /* --- تنسيق وضع الاستعراض (للقراءة فقط) --- */
-    .read-only-header, .read-only-rows .row {
-        grid-template-columns: 1fr 115px 110px 85px !important; /* إخفاء عمود الأزرار */
+    /* --- تنسيق وضع الاستعراض (للقراءة فقط - يتم تطبيقه برمجياً) --- */
+    .read-only-view .table-header, .read-only-view .row {
+        grid-template-columns: 1fr 115px 110px 85px !important; /* مسح عمود الحفظ لترتيب التصميم */
     }
 
     /* تنسيقات عناصر الصف */
@@ -163,15 +165,16 @@
     @media (max-width: 600px) {
         .app { width: 100%; margin: 0; border-radius: 0; border: none; }
         
-        #shareBanner { flex-direction: column; gap: 10px; text-align: center; padding: 15px; }
+        #shareBanner { flex-direction: column; gap: 12px; text-align: center; }
+        #shareBanner button { width: 100%; }
         
         .search-wrapper { padding: 30px 15px; }
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
         .table-header, .row { grid-template-columns: 1fr 65px 65px 50px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
         
-        /* ضبط المساحات في الجوال للمشاركة */
-        .read-only-header, .read-only-rows .row { grid-template-columns: 1fr 65px 65px 50px !important; }
+        /* ضبط المساحات في الجوال لوضع القراءة فقط */
+        .read-only-view .table-header, .read-only-view .row { grid-template-columns: 1fr 65px 65px 50px !important; }
 
         .table-header { font-size: 9px; padding: 8px 5px; }
         .exam-info .label { font-size: 12px !important; }
@@ -238,7 +241,10 @@
 
 <main class="app">
     <div id="shareBanner">
-        <span>👀 أنت تستعرض جدول صديقك حالياً<br><small style="opacity: 0.7; font-size: 10px;">(وضع القراءة فقط)</small></span>
+        <div class="banner-text">
+            <span>👀 أنت تستعرض جدول صديقك حالياً</span>
+            <small>وضع الاستعراض فقط (لا يمكنك التعديل هنا)</small>
+        </div>
         <button onclick="window.location.href=window.location.pathname">أنشئ جدولي الخاص ✨</button>
     </div>
 
@@ -313,7 +319,17 @@
     let myExams = JSON.parse(localStorage.getItem('yic_saved_exams')) || [];
     let searchTimeout;
     let countdownTimer;
-    let isSharedView = false; // متغير مهم لمعرفة حالة وضع المشاركة
+    let isSharedView = false; // متغير لتفعيل وضع الاستعراض
+
+    // --- إصلاح الخلل الكبير (تحديث بيانات الـ LocalStorage القديمة بإضافة ID) ---
+    myExams = myExams.map(ex => {
+        if (!ex.id) {
+            ex.id = generateExamId(ex);
+        }
+        return ex;
+    });
+    localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
+    // ------------------------------------------------------------------------
 
     function showToast(message, type = 'success') {
         const toast = document.getElementById('toastMessage');
@@ -381,7 +397,7 @@
                 localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
                 renderMySchedule();
                 
-                // فحص الرابط بعد تحميل البيانات مباشرة
+                // فحص الرابط بعد تحميل البيانات مباشرة لمعرفة إن كان وضع استعراض
                 checkSharedSchedule();
             }
         } catch (error) {
@@ -392,7 +408,7 @@
         }
     }
 
-    function createRow(ex, isSaved, searchQuery = '') {
+    function createRow(ex, isSaved, searchQuery = '', isReadOnly = false) {
         const row = document.createElement('div');
         row.className = 'row';
         
@@ -416,9 +432,9 @@
         const isPM = ex.time.toUpperCase().includes('PM');
         const timeColor = isPM ? '#ff9f43' : '#00d2d3';
 
-        // إخفاء التنبيهات إذا كنا في وضع استعراض جدول الصديق
+        // إخفاء تنبيه التعارض إذا كنا في وضع الاستعراض للقراءة فقط
         let conflictWarning = '';
-        if (!isSharedView) {
+        if (!isReadOnly) {
             const sameDayCount = myExams.filter(e => e.date.split(' ')[0] === dateNum).length;
             if (isSaved && sameDayCount > 1) {
                 conflictWarning = `<span style="color: #ff9f43; font-size: 9px; font-weight: 800; display: inline-block; margin-top: 5px; background: rgba(255, 159, 67, 0.15); padding: 3px 8px; border-radius: 6px; width: fit-content;"><i class="fa-solid fa-bell" style="margin-left: 4px;"></i>اختبار بنفس اليوم</span>`;
@@ -430,9 +446,9 @@
         const highlightedCode = highlightText(ex.code, searchQuery);
         const highlightedName = highlightText(ex.course_name, searchQuery);
 
-        // إخفاء عمود الأزرار تماماً في وضع المشاركة
+        // إخفاء عمود الأزرار برمجياً في وضع المشاركة
         let actionsHTML = '';
-        if (!isSharedView) {
+        if (!isReadOnly) {
             actionsHTML = `
                 <div class="exam-actions">
                     <button class="btn-action btn-save ${isSaved ? 'saved' : ''}" onclick="toggleSave('${ex.id}')">
@@ -475,7 +491,7 @@
     }
         
     function renderMySchedule() {
-        if (isSharedView) return; // لا تقم بعرض الجدول الشخصي في وضع الاستعراض
+        if (isSharedView) return; // لا نعرض الجدول الشخصي في وضع الاستعراض
 
         const container = document.getElementById('myRows');
         const section = document.getElementById('myScheduleSection');
@@ -512,7 +528,7 @@
     }
 
     function doSearch() {
-        if (isSharedView) return; // إيقاف البحث في وضع الاستعراض
+        if (isSharedView) return; // تعطيل البحث في وضع الاستعراض
 
         const rawQuery = document.getElementById('searchInput').value;
         const cleanQuery = rawQuery.toLowerCase().replace(/\s+/g, '');
@@ -554,7 +570,7 @@
     }
 
     function toggleSave(id) {
-        if (isSharedView) return; // لا يمكن التعديل في وضع المشاركة
+        if (isSharedView) return; // حماية إضافية: لا يمكن التعديل في وضع الاستعراض
 
         const index = myExams.findIndex(e => e.id === id);
         
@@ -590,7 +606,7 @@
     }
 
     function updateCountdown(nextExam) {
-        if (isSharedView) return; // لا تعرض العداد الخاص بك عند استعراض جدول الصديق
+        if (isSharedView) return; // لا نعرض العداد في وضع استعراض جدول الزميل
 
         const el = document.getElementById('countdown');
         clearInterval(countdownTimer);
@@ -640,7 +656,7 @@
         countdownTimer = setInterval(tick, 60000); 
     }
 
-    // --- دالة مشاركة الجدول وتشفير الرابط (بدون أسماء صريحة) ---
+    // --- دالة مشاركة الجدول وتشفير الرابط (إخفاء أسماء المواد) ---
     function shareSchedule() {
         if (myExams.length === 0) {
             showToast("⚠️ جدولك فارغ! أضف مواد أولاً.", "warning");
@@ -648,19 +664,18 @@
         }
         
         const codes = myExams.map(ex => ex.code.trim()).join(',');
-        // تشفير رموز المواد لكي لا تظهر صريحة في الرابط
-        const encodedCodes = btoa(codes);
+        const encodedCodes = btoa(codes); // التشفير لـ Base64
         const baseUrl = window.location.origin + window.location.pathname;
         const shareUrl = `${baseUrl}?s=${encodedCodes}`;
         
         navigator.clipboard.writeText(shareUrl).then(() => {
-            showToast("🔗 تم نسخ الرابط! شاركه مع زملائك", "success");
+            showToast("🔗 تم نسخ الرابط! أرسله لزملائك للاستعراض", "success");
         }).catch(err => {
             showToast("❌ حدث خطأ أثناء النسخ", "danger");
         });
     }
 
-    // --- دالة قراءة الرابط المشفر وعرض جدول الصديق (وضع القراءة فقط) ---
+    // --- دالة قراءة الرابط المشفر وتفعيل وضع (القراءة فقط) ---
     function checkSharedSchedule() {
         const urlParams = new URLSearchParams(window.location.search);
         const sharedEncoded = urlParams.get('s');
@@ -680,12 +695,13 @@
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
             if (sharedExams.length > 0) {
-                isSharedView = true; // تفعيل وضع القراءة فقط
+                isSharedView = true; // تفعيل وضع الاستعراض
+                document.body.classList.add('read-only-view'); // إضافة الكلاس لترتيب المقاسات بدون أزرار
 
-                // 1. إظهار الشريط الترحيبي
+                // 1. إظهار الشريط الترحيبي الخاص بجدول الصديق
                 document.getElementById('shareBanner').style.display = 'flex';
                 
-                // 2. إخفاء الواجهة الشخصية الخاصة بالطالب (مربع البحث، جدوله الشخصي، والعداد)
+                // 2. إخفاء الواجهة الشخصية للطالب (مربع البحث، جدوله الشخصي، والعداد)
                 document.getElementById('mainSearchWrapper').style.display = 'none';
                 document.getElementById('myScheduleSection').style.display = 'none';
                 
@@ -695,22 +711,24 @@
                 const container = document.getElementById('searchRows');
                 const header = document.getElementById('searchHeader');
                 
-                // 4. تعديل رأس الجدول لإخفاء كلمة "حفظ" ومطابقة التصميم
+                // 4. تعديل رأس الجدول لإخفاء كلمة "حفظ"
                 header.innerHTML = '<div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div>';
-                header.classList.add('read-only-header');
                 header.style.display = 'grid';
                 
                 container.innerHTML = '';
-                container.classList.add('read-only-rows');
                 
                 sharedExams.forEach(ex => {
-                    container.appendChild(createRow(ex, false));
+                    // نمرر true في النهاية لتخبر الدالة أن هذا وضع "القراءة فقط"
+                    container.appendChild(createRow(ex, false, '', true));
                 });
                 
-                // التوجه للشريط الأعلى
+                // النزول التلقائي للصفحة
                 setTimeout(() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 100);
+            } else {
+                showToast("⚠️ الرابط غير صالح أو لا يحتوي على مواد", "warning");
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
     }
