@@ -774,7 +774,7 @@
     
     let sharedCodes = '';
     if (encodedCodes) {
-        try { sharedCodes = atob(encodedCodes); } catch(e) { console.error("رابط غير صالح"); return; }
+        try { sharedCodes = atob(encodedCodes); } catch(e) { return; }
     } else if (legacyCodes) {
         sharedCodes = legacyCodes;
     }
@@ -786,25 +786,44 @@
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
             if (sharedExams.length > 0) {
-                const container = document.getElementById('searchRows');
-                const header = document.getElementById('searchHeader');
-                
-                // إضافة البانر مع ID عشان نقدر نحذفه تلقائياً
-                container.innerHTML = `
-                    <div id="sharedBannerNotice" style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin:0 15px 15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
-                        👀 أنت تشوف جدول خويك حاليا! تقدر تضيف المواد لجدولك من هنا 👇
-                    </div>`;
-                
-                header.style.display = 'grid';
-                
-                // عرض المواد مع التحقق إذا هي مضافة مسبقاً في جدول المستخدم
-                sharedExams.forEach(ex => {
-                    const isSaved = myExams.some(s => s.id === ex.id);
-                    container.appendChild(createRow(ex, isSaved)); 
+                // 1. تفعيل كلاس القراءة فقط (يضبط لك مقاسات الجريد تلقائياً من الـ CSS حقك)
+                document.body.classList.add('read-only-view');
+                isSharedView = true;
+
+                // 2. إخفاء أدوات البحث والتبويبات تماماً
+                const elementsToHide = ['.search-wrapper', '#resultsTitle', '#searchHeader', '#searchRows', '#tabsMenu'];
+                elementsToHide.forEach(selector => {
+                    const el = document.querySelector(selector);
+                    if (el) el.style.display = 'none';
                 });
+
+                // 3. استهداف قسم الجدول الشخصي وإعادة صياغته ليكون للعرض فقط
+                const myScheduleSection = document.getElementById('myScheduleSection');
+                myScheduleSection.style.display = 'block';
                 
-                // تمرير الشاشة للنتائج
-                setTimeout(() => document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+                myScheduleSection.innerHTML = `
+                    <div class="section-title" style="justify-content: space-between;">
+                        <div>
+                            <i class="fa-solid fa-eye" style="color: var(--accent);"></i> 
+                            جدول مستعرض (للقراءة فقط)
+                        </div>
+                        <button onclick="window.location.href=window.location.pathname" class="btn-action" style="width: auto; padding: 0 12px; font-size: 11px; font-weight: 800; background: rgba(255, 77, 109, 0.15); color: var(--danger);">
+                            <i class="fa-solid fa-xmark" style="margin-left: 5px;"></i> إغلاق
+                        </button>
+                    </div>
+                    <div class="table-header">
+                        <div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div>
+                        </div>
+                    <div id="readOnlyRows"></div>
+                `;
+
+                // 4. تعبئة المواد في الحاوية الجديدة
+                const container = document.getElementById('readOnlyRows');
+                sharedExams.forEach(ex => {
+                    // استخدام دالتك createRow وتمرير true في البرامتر الرابع (isReadOnly) عشان يخفي زر الحذف (+) و (-)
+                    const row = createRow(ex, false, '', true);
+                    container.appendChild(row);
+                });
             }
         }, 500);
     }
