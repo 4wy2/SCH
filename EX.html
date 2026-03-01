@@ -476,7 +476,7 @@
                     if (data.config.is_id_search_active) {
                         alertEl.style.color = 'var(--accent)'; // أخضر إذا كان رسمي
                     } else {
-                        alertEl.style.color = 'var(--warning)'; // برتقالي إذا كان مبدئي
+                        alertEl.style.color = 'var(--accent)'; // برتقالي إذا كان مبدئي
                     }
                 }
 
@@ -494,7 +494,7 @@
                     
                     // نلغي وظيفة فتح التبويب ونخليها تطلع إشعار التلميح للطالب
                     idTabBtn.onclick = function() {
-                        showToast('⏳ تفتح هذه الخاصية فور اعتماد الكلية للجدول الرسمي!', 'warning');
+                        showToast('⏳ تفتح هذه الخاصية فور نزول الجدول بالايدي !', 'warning');
                     };
                 }
             }
@@ -781,34 +781,69 @@
 
     if (sharedCodes) {
         const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
-        
-        // 1. شلنا الـ setTimeout الخارجي عشان الجدول يظهر فوراً بدون تأخير
         const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
         
         if (sharedExams.length > 0) {
             const container = document.getElementById('searchRows');
             const header = document.getElementById('searchHeader');
+            const tabsMenu = document.getElementById('tabsMenu');
+            const searchWrapper = document.querySelector('.search-wrapper');
+
+            // 1. إخفاء أدوات البحث والتبويبات لتركيز الانتباه على الجدول المشترك
+            if(tabsMenu) tabsMenu.style.display = 'none';
+            if(searchWrapper) searchWrapper.style.display = 'none';
             
+            // 2. تحديث العنوان ليكون مناسباً للعرض
+            document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-share-nodes"></i> المواد المشتركة المستلمة';
+
+            // 3. بناء "بانر" ترحيبي بتصميم عصري (Glassmorphism)
             container.innerHTML = `
-                <div id="sharedBannerNotice" style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin:0 15px 15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
-                    👀 أنت تشوف جدول خويك حاليا! تقدر تضيف المواد لجدولك من هنا 👇
+                <div id="sharedBannerNotice" style="
+                    text-align:center; 
+                    padding:25px; 
+                    background: linear-gradient(135deg, rgba(128, 66, 255, 0.1), rgba(31, 196, 124, 0.1));
+                    border: 1px solid var(--primary);
+                    border-radius:24px; 
+                    margin:0 15px 25px; 
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                ">
+                    <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
+                    <h3 style="margin:0; color:var(--ee-cyan); font-weight:900;">تم استلام جدول مشترك</h3>
+                    <p style="font-size:12px; color:var(--text-dim); margin: 8px 0 15px;">يحتوي هذا الجدول على <b>${sharedExams.length}</b> مواد. يمكنك إضافتها لجدولك الشخصي بالضغط على زر (+)</p>
+                    
+                    <button onclick="window.location.href=window.location.pathname" style="
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid var(--border-color);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 12px;
+                        font-size: 11px;
+                        font-weight: 800;
+                        cursor: pointer;
+                        transition: 0.3s;
+                    ">
+                        <i class="fa-solid fa-plus-circle" style="margin-left:5px;"></i> إنشاء جدولي الخاص
+                    </button>
                 </div>`;
             
             header.style.display = 'grid';
             
+            // 4. عرض المواد المشتركة
             sharedExams.forEach(ex => {
                 const isSaved = myExams.some(s => s.id === ex.id);
                 container.appendChild(createRow(ex, isSaved)); 
             });
             
-            // 2. تنظيف الرابط من المتصفح عشان لو سوى تحديث ما يرجع الجدول القديم
-            window.history.replaceState({}, document.title, window.location.pathname);
+            // 5. تنظيف الرابط (اختياري، يفضل تركه إذا أردت للمستخدم مشاركة نفس الرابط)
+            // window.history.replaceState({}, document.title, window.location.pathname);
             
-            // 3. تقليل وقت السكرول لـ 100ms عشان يكون أنعم وأسرع
-            setTimeout(() => document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            // 6. تمرير الشاشة للجدول بنعومة
+            setTimeout(() => {
+                const target = document.getElementById('sharedBannerNotice');
+                if(target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
             
         } else {
-            // 4. تنبيه لو الرابط قديم والمواد ما عاد هي موجودة بالسيرفر
             if (typeof showToast === 'function') {
                 showToast("⚠️ رابط الجدول قديم أو المواد غير متاحة حالياً", "warning");
             }
