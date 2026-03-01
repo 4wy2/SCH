@@ -782,56 +782,29 @@
     if (sharedCodes) {
         const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
         
-        // ننتظر قليلاً للتأكد من تحميل allExams
         setTimeout(() => {
             const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
             
             if (sharedExams.length > 0) {
-                isSharedView = true; 
-                document.body.classList.add('read-only-view');
+                const container = document.getElementById('searchRows');
+                const header = document.getElementById('searchHeader');
                 
-                // إخفاء عناصر البحث والتبويبات تماماً
-                const elementsToHide = ['.search-wrapper', '#resultsTitle', '#searchHeader', '#searchRows', '#tabsMenu'];
-                elementsToHide.forEach(selector => {
-                    const el = document.querySelector(selector);
-                    if (el) el.style.display = 'none';
+                // إضافة البانر مع ID عشان نقدر نحذفه تلقائياً
+                container.innerHTML = `
+                    <div id="sharedBannerNotice" style="text-align:center; padding:15px; background:rgba(31,196,124,0.1); color:var(--accent); border-radius:12px; margin:0 15px 15px; font-weight:800; font-size:12px; border: 1px dashed var(--accent);">
+                        👀 أنت تشوف جدول خويك حاليا! تقدر تضيف المواد لجدولك من هنا 👇
+                    </div>`;
+                
+                header.style.display = 'grid';
+                
+                // عرض المواد مع التحقق إذا هي مضافة مسبقاً في جدول المستخدم
+                sharedExams.forEach(ex => {
+                    const isSaved = myExams.some(s => s.id === ex.id);
+                    container.appendChild(createRow(ex, isSaved)); 
                 });
                 
-                // إظهار قسم الجدول
-                const myScheduleSection = document.getElementById('myScheduleSection');
-                const container = document.getElementById('myRows'); // التأكد من استخدام myRows
-                
-                if (myScheduleSection && container) {
-                    myScheduleSection.style.display = 'block';
-                    container.innerHTML = ''; 
-
-                    // إضافة هيدر بسيط وأنيق يوضح أنه جدول مستعرض
-                    const headerRow = document.createElement('div');
-                    headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin: 10px 15px 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); animation: fadeIn 0.5s;";
-                    headerRow.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:10px;">
-                             <i class="fa-solid fa-eye" style="color:var(--primary)"></i>
-                             <h2 style="margin:0; font-size:16px; font-weight:800;">استعراض جدول مشترك</h2>
-                        </div>
-                        <div style="display:flex; gap:8px;">
-                            <button onclick="copySharedToMySchedule('${encodedCodes || legacyCodes}')" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; font-size:11px; font-weight:800; cursor:pointer;">
-                                <i class="fa-solid fa-download"></i> حفظ بجدولي
-                            </button>
-                            <button onclick="window.location.href=window.location.pathname" style="background:rgba(255,255,255,0.05); color:white; border:1px solid var(--border-color); padding:8px 15px; border-radius:10px; font-size:11px; font-weight:800; cursor:pointer;">
-                                إغلاق
-                            </button>
-                        </div>
-                    `;
-                    container.appendChild(headerRow);
-                    
-                    // بناء الصفوف
-                    sharedExams.forEach(ex => {
-                        const row = createRow(ex, true, '', true); // true الأخيرة تعني ReadOnly
-                        container.appendChild(row);
-                    });
-                    
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
+                // تمرير الشاشة للنتائج
+                setTimeout(() => document.getElementById('searchRows').scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
             }
         }, 500);
     }
