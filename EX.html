@@ -786,67 +786,65 @@
         if (sharedExams.length > 0) {
             const container = document.getElementById('searchRows');
             const header = document.getElementById('searchHeader');
-            const tabsMenu = document.getElementById('tabsMenu');
-            const searchWrapper = document.querySelector('.search-wrapper');
+            const searchSection = document.querySelector('.search-section'); // قسم البحث
+            const mainTabs = document.getElementById('tabsMenu'); // تبويبات التنقل
 
-            // 1. إخفاء أدوات البحث والتبويبات لتركيز الانتباه على الجدول المشترك
-            if(tabsMenu) tabsMenu.style.display = 'none';
-            if(searchWrapper) searchWrapper.style.display = 'none';
-            
-            // 2. تحديث العنوان ليكون مناسباً للعرض
-            document.getElementById('resultsTitle').innerHTML = '<i class="fa-solid fa-share-nodes"></i> المواد المشتركة المستلمة';
+            // 1. إخفاء كل أدوات التحكم (البحث، التبويبات، الإضافة) ليكون العرض فقط
+            if(searchSection) searchSection.style.display = 'none';
+            if(mainTabs) mainTabs.style.display = 'none';
 
-            // 3. بناء "بانر" ترحيبي بتصميم عصري (Glassmorphism)
+            // 2. تصميم "البانر" العلوي كأنه ترويسة لجدول رسمي
             container.innerHTML = `
-                <div id="sharedBannerNotice" style="
+                <div id="sharedViewHeader" style="
                     text-align:center; 
-                    padding:25px; 
-                    background: linear-gradient(135deg, rgba(128, 66, 255, 0.1), rgba(31, 196, 124, 0.1));
-                    border: 1px solid var(--primary);
-                    border-radius:24px; 
-                    margin:0 15px 25px; 
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                    padding:30px 20px; 
+                    background: linear-gradient(rgba(10, 10, 10, 0.8), rgba(10, 10, 10, 0.8)), url('path/to/your/pattern.png');
+                    border: 2px solid var(--accent);
+                    border-radius:20px; 
+                    margin:20px 15px;
+                    position: relative;
                 ">
-                    <div style="font-size: 40px; margin-bottom: 10px;">📋</div>
-                    <h3 style="margin:0; color:var(--ee-cyan); font-weight:900;">تم استلام جدول مشترك</h3>
-                    <p style="font-size:12px; color:var(--text-dim); margin: 8px 0 15px;">يحتوي هذا الجدول على <b>${sharedExams.length}</b> مواد. يمكنك إضافتها لجدولك الشخصي بالضغط على زر (+)</p>
+                    <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
+                    <h2 style="margin:0; color:white; font-size:18px;">جدول الاختبارات المشترك</h2>
+                    <p style="color:var(--accent); font-size:12px; margin:5px 0 20px;">تمت مشاركة هذا الجدول معك للمعاينة فقط</p>
                     
                     <button onclick="window.location.href=window.location.pathname" style="
-                        background: rgba(255,255,255,0.05);
-                        border: 1px solid var(--border-color);
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 12px;
-                        font-size: 11px;
-                        font-weight: 800;
+                        background: var(--accent);
+                        color: #000;
+                        border: none;
+                        padding: 12px 25px;
+                        border-radius: 50px;
+                        font-weight: 900;
+                        font-size: 13px;
                         cursor: pointer;
+                        box-shadow: 0 5px 15px rgba(31, 196, 124, 0.4);
                         transition: 0.3s;
                     ">
-                        <i class="fa-solid fa-plus-circle" style="margin-left:5px;"></i> إنشاء جدولي الخاص
+                        <i class="fa-solid fa-magic-wand-sparkles" style="margin-left:8px;"></i> اصنع جدولي الخاص الآن
                     </button>
                 </div>`;
             
             header.style.display = 'grid';
             
-            // 4. عرض المواد المشتركة
+            // 3. عرض المواد مع تعطيل أزرار الحذف أو الإضافة داخل createRow لو أمكن
             sharedExams.forEach(ex => {
-                const isSaved = myExams.some(s => s.id === ex.id);
-                container.appendChild(createRow(ex, isSaved)); 
+                const row = createRow(ex, false); 
+                // إخفاء زر الإضافة/الحذف من الصف عشان ما يقدر يعدل
+                const actionBtn = row.querySelector('.add-btn, .remove-btn, .action-cell');
+                if(actionBtn) actionBtn.style.visibility = 'hidden'; 
+                
+                container.appendChild(row); 
             });
-            
-            // 5. تنظيف الرابط (اختياري، يفضل تركه إذا أردت للمستخدم مشاركة نفس الرابط)
-            // window.history.replaceState({}, document.title, window.location.pathname);
-            
-            // 6. تمرير الشاشة للجدول بنعومة
+
+            // 4. منع أي تفاعل إضافي (اختياري: يعطي شعور الصورة)
+            container.style.pointerEvents = 'none'; 
+            document.getElementById('sharedViewHeader').style.pointerEvents = 'auto'; // السماح بالضغط على الزر فقط
+
+            // 5. تمرير تلقائي للجدول
             setTimeout(() => {
-                const target = document.getElementById('sharedBannerNotice');
-                if(target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 300);
+                document.getElementById('sharedViewHeader').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 500);
             
-        } else {
-            if (typeof showToast === 'function') {
-                showToast("⚠️ رابط الجدول قديم أو المواد غير متاحة حالياً", "warning");
-            }
         }
     }
 }
