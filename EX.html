@@ -769,82 +769,80 @@
     }
     function checkSharedSchedule() {
     const urlParams = new URLSearchParams(window.location.search);
-    const encodedCodes = urlParams.get('s');
-    const legacyCodes = urlParams.get('shared'); 
+    const encodedCodes = urlParams.get('s') || urlParams.get('shared');
     
-    let sharedCodes = '';
     if (encodedCodes) {
-        try { sharedCodes = atob(encodedCodes); } catch(e) { console.error("رابط غير صالح"); return; }
-    } else if (legacyCodes) {
-        sharedCodes = legacyCodes;
-    }
+        let sharedCodes = '';
+        try {
+            // فك التشفير (يدعم الرابط الجديد والقديم)
+            sharedCodes = encodedCodes.includes(',') ? encodedCodes : atob(encodedCodes);
+        } catch(e) { return; }
 
-    if (sharedCodes) {
         const codesArray = sharedCodes.split(',').map(c => c.toLowerCase().trim());
         const sharedExams = allExams.filter(ex => codesArray.includes(ex.code.toLowerCase().trim()));
         
         if (sharedExams.length > 0) {
-            const container = document.getElementById('searchRows');
-            const header = document.getElementById('searchHeader');
-            const searchSection = document.querySelector('.search-section'); // قسم البحث
-            const mainTabs = document.getElementById('tabsMenu'); // تبويبات التنقل
-
-            // 1. إخفاء كل أدوات التحكم (البحث، التبويبات، الإضافة) ليكون العرض فقط
-            if(searchSection) searchSection.style.display = 'none';
-            if(mainTabs) mainTabs.style.display = 'none';
-
-            // 2. تصميم "البانر" العلوي كأنه ترويسة لجدول رسمي
-            container.innerHTML = `
-                <div id="sharedViewHeader" style="
-                    text-align:center; 
-                    padding:30px 20px; 
-                    background: linear-gradient(rgba(10, 10, 10, 0.8), rgba(10, 10, 10, 0.8)), url('path/to/your/pattern.png');
-                    border: 2px solid var(--accent);
-                    border-radius:20px; 
-                    margin:20px 15px;
-                    position: relative;
-                ">
-                    <div style="font-size: 32px; margin-bottom: 10px;">📅</div>
-                    <h2 style="margin:0; color:white; font-size:18px;">جدول الاختبارات المشترك</h2>
-                    <p style="color:var(--accent); font-size:12px; margin:5px 0 20px;">تمت مشاركة هذا الجدول معك للمعاينة فقط</p>
-                    
-                    <button onclick="window.location.href=window.location.pathname" style="
-                        background: var(--accent);
-                        color: #000;
-                        border: none;
-                        padding: 12px 25px;
-                        border-radius: 50px;
-                        font-weight: 900;
-                        font-size: 13px;
-                        cursor: pointer;
-                        box-shadow: 0 5px 15px rgba(31, 196, 124, 0.4);
-                        transition: 0.3s;
-                    ">
-                        <i class="fa-solid fa-magic-wand-sparkles" style="margin-left:8px;"></i> اصنع جدولي الخاص الآن
-                    </button>
-                </div>`;
-            
-            header.style.display = 'grid';
-            
-            // 3. عرض المواد مع تعطيل أزرار الحذف أو الإضافة داخل createRow لو أمكن
-            sharedExams.forEach(ex => {
-                const row = createRow(ex, false); 
-                // إخفاء زر الإضافة/الحذف من الصف عشان ما يقدر يعدل
-                const actionBtn = row.querySelector('.add-btn, .remove-btn, .action-cell');
-                if(actionBtn) actionBtn.style.visibility = 'hidden'; 
-                
-                container.appendChild(row); 
+            // --- 1. إخفاء العناصر غير المرغوبة (تصفية الصفحة) ---
+            const toHide = [
+                'tabsMenu', 
+                'manualSearchMode', 
+                'idSearchMode', 
+                'takeoverPopup',
+                'myScheduleSection'
+            ];
+            toHide.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.style.display = 'none';
             });
 
-            // 4. منع أي تفاعل إضافي (اختياري: يعطي شعور الصورة)
-            container.style.pointerEvents = 'none'; 
-            document.getElementById('sharedViewHeader').style.pointerEvents = 'auto'; // السماح بالضغط على الزر فقط
-
-            // 5. تمرير تلقائي للجدول
-            setTimeout(() => {
-                document.getElementById('sharedViewHeader').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 500);
+            // --- 2. بناء واجهة العرض الخاصة (Unique View) ---
+            // سنقوم بحقن المحتوى داخل الحاوية الرئيسية .app
+            const appContainer = document.querySelector('.app');
             
+            // إنشاء حاوية جديدة تماماً لعرض الجدول المشترك فقط
+            const sharedViewHTML = `
+                <div id="exclusiveSharedView" style="padding: 20px 0; animation: fadeIn 0.8s ease;">
+                    <div style="text-align:center; padding: 40px 20px;">
+                        <div style="display:inline-block; padding:15px; background:rgba(128,66,255,0.1); border-radius:50%; margin-bottom:20px;">
+                            <i class="fa-solid fa-calendar-check" style="font-size:40px; color:var(--ee-cyan);"></i>
+                        </div>
+                        <h2 style="margin:0; font-size:24px; font-weight:900;">جدول اختبارات مشترك</h2>
+                        <p style="color:var(--text-dim); font-size:14px; margin:10px 0 25px;">هذا الجدول متاح للمعاينة فقط كصورة ثابتة</p>
+                        
+                        <button onclick="window.location.href=window.location.pathname" class="btn-primary-glow" style="width:auto; padding:12px 30px; display:inline-flex; align-items:center; gap:10px;">
+                            <i class="fa-solid fa-plus"></i> إنشاء جدولي الخاص
+                        </button>
+                    </div>
+
+                    <div class="read-only-view">
+                        <div class="table-header" style="display:grid; grid-template-columns: 1fr 115px 110px 85px;">
+                            <div>المادة</div><div>التاريخ</div><div>الوقت</div><div>المدة</div>
+                        </div>
+                        <div id="sharedRowsContainer"></div>
+                    </div>
+
+                    <p style="text-align:center; margin-top:40px; font-size:11px; color:var(--text-dim); opacity:0.5;">
+                        منصة جداول الاختبارات - نادي الهندسة الكهربائية
+                    </p>
+                </div>
+            `;
+
+            // حقن الواجهة الجديدة
+            appContainer.innerHTML = sharedViewHTML;
+
+            // --- 3. عرض المواد داخل الواجهة الجديدة ---
+            const rowsContainer = document.getElementById('sharedRowsContainer');
+            sharedExams.sort((a, b) => dayjs(a.date.split(' ')[0], 'DD-MM-YYYY') - dayjs(b.date.split(' ')[0], 'DD-MM-YYYY'));
+
+            sharedExams.forEach(ex => {
+                // نستخدم createRow مع تمرير true للـ isReadOnly
+                // ملاحظة: تأكد أن createRow تدعم إخفاء عمود "الأكشن" بناءً على الباراميتر
+                const row = createRow(ex, false, '', true); 
+                rowsContainer.appendChild(row);
+            });
+
+            // منع التفاعل مع الصفوف (لجعلها كالصورة)
+            rowsContainer.style.pointerEvents = 'none';
         }
     }
 }
